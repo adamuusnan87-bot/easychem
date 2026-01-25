@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Reaction Predictor - ZamaniChem Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+<!-- Add these to your sidebar navigation in all template files -->
+<div class="nav-items">
+    <a href="/" class="nav-item">
+        <i class="fas fa-balance-scale"></i>
+        <span>Balance Equations</span>
+    </a>
+    <a href="/yield" class="nav-item">
+        <i class="fas fa-calculator"></i>
+        <span>Yield Calculator</span>
+    </a>
+    <a href="/solutions" class="nav-item">
+        <i class="fas fa-flask"></i>
+        <span>Solution Calculator</span>
+    </a>
+    <a href="/quiz" class="nav-item">
+        <i class="fas fa-question-circle"></i>
+        <span>Chemistry Quiz</span>
+    </a>
+    <a href="/predict" class="nav-item">
+        <i class="fas fa-crystal-ball"></i>
+        <span>Predict Products</span>
+    </a>
+    <a href="/database" class="nav-item">
+        <i class="fas fa-database"></i>
+        <span>Reaction Database</span>
+    </a>
+    <a href="/elements" class="nav-item">
+        <i class="fas fa-table"></i>
+        <span>Periodic Table</span>
+    </a>
+</div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <h1 class="animate__animated animate__fadeIn">
+                <i class="fas fa-crystal-ball"></i>
+                Reaction Predictor
+            </h1>
+            <p class="subtitle">Predict products based on reactants and reaction type</p>
+        </header>
+
+        <!-- Prediction Form -->
+        <div class="card main-form-card">
+            <h2><i class="fas fa-magic"></i> Predict Chemical Reaction</h2>
+            
+            <form method="POST" class="predict-form">
+                <div class="form-group">
+                    <label for="reactants">
+                        <i class="fas fa-flask"></i>
+                        Reactants (separate with +)
+                    </label>
+                    <input type="text" 
+                           id="reactants" 
+                           name="reactants" 
+                           placeholder="HCl + NaOH"
+                           required
+                           value="{{ request.form.reactants or '' }}">
+                    
+                    <div class="quick-examples">
+                        <span>Common Reactions:</span>
+                        <button type="button" class="example-btn" onclick="setExample('HCl + NaOH')">
+                            Acid + Base
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('CH4 + O2')">
+                            Combustion
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('Zn + HCl')">
+                            Metal + Acid
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reaction Type Selection -->
+                <div class="form-group">
+                    <label for="reaction_type">
+                        <i class="fas fa-tag"></i>
+                        Reaction Type (Optional)
+                    </label>
+                    <select id="reaction_type" name="reaction_type" class="form-select">
+                        <option value="auto">Auto Detect</option>
+                        <option value="synthesis">Synthesis</option>
+                        <option value="decomposition">Decomposition</option>
+                        <option value="combustion">Combustion</option>
+                        <option value="single_replacement">Single Replacement</option>
+                        <option value="double_replacement">Double Replacement</option>
+                        <option value="acid_base">Acid-Base Neutralization</option>
+                        <option value="redox">Redox</option>
+                        <option value="precipitation">Precipitation</option>
+                    </select>
+                </div>
+
+                <!-- Advanced Options -->
+                <div class="form-group">
+                    <div class="advanced-options-toggle">
+                        <button type="button" class="btn-link" onclick="toggleAdvancedOptions()">
+                            <i class="fas fa-sliders-h"></i>
+                            Advanced Options
+                        </button>
+                    </div>
+                    
+                    <div class="advanced-options" id="advancedOptions" style="display: none;">
+                        <div class="option-group">
+                            <label>
+                                <input type="checkbox" name="include_states" checked>
+                                Include States of Matter
+                            </label>
+                            <label>
+                                <input type="checkbox" name="predict_precipitate" checked>
+                                Predict Precipitate Formation
+                            </label>
+                            <label>
+                                <input type="checkbox" name="predict_gas" checked>
+                                Predict Gas Evolution
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Predict Button -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-crystal-ball"></i>
+                        Predict Products
+                    </button>
+                    
+                    <button type="button" class="btn-secondary" onclick="clearForm()">
+                        <i class="fas fa-times"></i>
+                        Clear
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if result %}
+        <!-- Results Section -->
+        <div class="results-container animate__animated animate__fadeInUp">
+            <div class="results-header">
+                <h2><i class="fas fa-search"></i> Prediction Results</h2>
+                <div class="result-actions">
+                    <button class="btn-icon" onclick="copyPrediction()" title="Copy Prediction">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon" onclick="balancePrediction()" title="Balance Equation">
+                        <i class="fas fa-balance-scale"></i>
+                    </button>
+                </div>
+            </div>
+            
+            {% if result.error %}
+            <div class="error-card">
+                <div class="error-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Prediction Error</h3>
+                </div>
+                <p>{{ result.error }}</p>
+            </div>
+            {% endif %}
+            
+            {% if result.predicted_equation %}
+            <!-- Prediction Result -->
+            <div class="result-card highlight">
+                <div class="result-header">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Predicted Reaction</h3>
+                    <span class="badge badge-success">AI Predicted</span>
+                </div>
+                <div class="prediction-display">
+                    <div class="reactants-side">
+                        <span class="side-label">Reactants</span>
+                        <div class="compounds">
+                            {{ result.reactants }}
+                        </div>
+                    </div>
+                    
+                    <div class="reaction-arrow">
+                        <i class="fas fa-long-arrow-alt-right"></i>
+                    </div>
+                    
+                    <div class="products-side">
+                        <span class="side-label">Products</span>
+                        <div class="compounds">
+                            {{ result.predicted_equation.split('->')[1] if '->' in result.predicted_equation else result.predicted_equation }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="prediction-info">
+                    <div class="info-item">
+                        <i class="fas fa-tag"></i>
+                        <span>Type: <strong>{{ result.reaction_type }}</strong></span>
+                    </div>
+                    
+                    {% if result.precipitate %}
+                    <div class="info-item">
+                        <i class="fas fa-cloud-rain"></i>
+                        <span>Precipitate: <strong>{{ result.precipitate|join(', ') }}</strong></span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if result.gas_formed %}
+                    <div class="info-item">
+                        <i class="fas fa-wind"></i>
+                        <span>Gas Formed: <strong>{{ result.gas_formed|join(', ') }}</strong></span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Balanced Equation -->
+            {% if result.balanced_equation %}
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-balance-scale"></i>
+                    <h3>Balanced Equation</h3>
+                </div>
+                <div class="equation-display balanced">
+                    {{ result.balanced_equation }}
+                </div>
+                
+                <div class="action-buttons">
+                    <a href="/?equation={{ result.balanced_equation|urlencode }}" class="btn-primary">
+                        <i class="fas fa-flask"></i>
+                        Analyze This Reaction
+                    </a>
+                    <a href="/yield?equation={{ result.balanced_equation|urlencode }}" class="btn-secondary">
+                        <i class="fas fa-calculator"></i>
+                        Calculate Yield
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Reaction Details -->
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Reaction Analysis</h3>
+                </div>
+                
+                <div class="analysis-grid">
+                    <div class="analysis-item">
+                        <div class="analysis-icon">
+                            <i class="fas fa-atom"></i>
+                        </div>
+                        <div class="analysis-content">
+                            <h4>Mechanism</h4>
+                            <p>{{ get_reaction_description(result.reaction_type) }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <div class="analysis-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="analysis-content">
+                            <h4>Safety Notes</h4>
+                            <p>{{ get_safety_notes(result.reaction_type, result.gas_formed) }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <div class="analysis-icon">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="analysis-content">
+                            <h4>Lab Procedure</h4>
+                            <p>{{ get_lab_procedure(result.reaction_type) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Similar Reactions -->
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-project-diagram"></i>
+                    <h3>Similar Reactions</h3>
+                </div>
+                
+                <div class="similar-reactions">
+                    <div class="similar-reaction">
+                        <div class="reaction-eq">2HCl + CaCO₃ → CaCl₂ + CO₂ + H₂O</div>
+                        <div class="reaction-type">Acid + Carbonate</div>
+                    </div>
+                    <div class="similar-reaction">
+                        <div class="reaction-eq">H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O</div>
+                        <div class="reaction-type">Acid-Base</div>
+                    </div>
+                    <div class="similar-reaction">
+                        <div class="reaction-eq">CH₃COOH + NaOH → CH₃COONa + H₂O</div>
+                        <div class="reaction-type">Weak Acid + Base</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Reaction Types Guide -->
+        <div class="card info-card">
+            <h3><i class="fas fa-book"></i> Reaction Types Guide</h3>
+            
+            <div class="reaction-types-grid">
+                <div class="reaction-type-card">
+                    <div class="type-icon synthesis">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <h4>Synthesis</h4>
+                    <p>A + B → AB</p>
+                    <small>Two or more substances combine</small>
+                </div>
+                
+                <div class="reaction-type-card">
+                    <div class="type-icon decomposition">
+                        <i class="fas fa-minus"></i>
+                    </div>
+                    <h4>Decomposition</h4>
+                    <p>AB → A + B</p>
+                    <small>Compound breaks down</small>
+                </div>
+                
+                <div class="reaction-type-card">
+                    <div class="type-icon combustion">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <h4>Combustion</h4>
+                    <p>CₓHᵧ + O₂ → CO₂ + H₂O</p>
+                    <small>Reaction with oxygen</small>
+                </div>
+                
+                <div class="reaction-type-card">
+                    <div class="type-icon replacement">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <h4>Replacement</h4>
+                    <p>A + BC → AC + B</p>
+                    <small>Elements switch places</small>
+                </div>
+                
+                <div class="reaction-type-card">
+                    <div class="type-icon acidbase">
+                        <i class="fas fa-tint"></i>
+                    </div>
+                    <h4>Acid-Base</h4>
+                    <p>HA + BOH → BA + H₂O</p>
+                    <small>Neutralization reaction</small>
+                </div>
+                
+                <div class="reaction-type-card">
+                    <div class="type-icon redox">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h4>Redox</h4>
+                    <p>Transfer of electrons</p>
+                    <small>Oxidation-reduction</small>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Mobile navigation toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        function setExample(reactants) {
+            document.getElementById('reactants').value = reactants;
+        }
+
+        function clearForm() {
+            document.querySelector('.predict-form').reset();
+        }
+
+        function toggleAdvancedOptions() {
+            const options = document.getElementById('advancedOptions');
+            options.style.display = options.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function copyPrediction() {
+            const prediction = document.querySelector('.equation-display.balanced')?.textContent ||
+                              document.querySelector('.prediction-display')?.textContent;
+            
+            if (prediction) {
+                navigator.clipboard.writeText(prediction).then(() => {
+                    showToast('Prediction copied to clipboard!');
+                });
+            }
+        }
+
+        function balancePrediction() {
+            const prediction = "{{ result.predicted_equation }}";
+            if (prediction) {
+                window.location.href = `/?equation=${encodeURIComponent(prediction)}`;
+            }
+        }
+
+        function get_reaction_description(type) {
+            const descriptions = {
+                'Synthesis': 'Two or more reactants combine to form a single product.',
+                'Decomposition': 'A single compound breaks down into two or more simpler substances.',
+                'Combustion': 'A substance reacts with oxygen, releasing energy in the form of heat and light.',
+                'Single Replacement': 'One element replaces another element in a compound.',
+                'Double Replacement': 'The positive and negative ions of two ionic compounds exchange places.',
+                'Acid-Base': 'An acid and a base react to form a salt and water.',
+                'Redox': 'Electrons are transferred between species, changing oxidation states.',
+                'Precipitation': 'Two aqueous solutions react to form an insoluble solid (precipitate).'
+            };
+            return descriptions[type] || 'General chemical reaction.';
+        }
+
+        function get_safety_notes(type, gases) {
+            let notes = [];
+            
+            if (type === 'Combustion') {
+                notes.push('• Use proper ventilation');
+                notes.push('• Keep away from flammable materials');
+                notes.push('• Have fire extinguisher ready');
+            }
+            
+            if (gases && gases.length > 0) {
+                notes.push('• Perform in fume hood');
+                notes.push('• Monitor gas evolution');
+            }
+            
+            if (type === 'Acid-Base') {
+                notes.push('• Wear gloves and goggles');
+                notes.push('• Add acid to water, not water to acid');
+            }
+            
+            return notes.length > 0 ? notes.join('<br>') : 'Standard lab safety procedures apply.';
+        }
+
+        function get_lab_procedure(type) {
+            const procedures = {
+                'Acid-Base': '1. Measure reactants<br>2. Add acid to base slowly<br>3. Stir continuously<br>4. Monitor temperature',
+                'Precipitation': '1. Prepare solutions<br>2. Mix slowly<br>3. Filter precipitate<br>4. Wash and dry',
+                'Combustion': '1. Set up ignition source<br>2. Control oxygen supply<br>3. Monitor temperature<br>4. Collect products',
+                'Redox': '1. Prepare electrodes<br>2. Set up electrolyte<br>3. Apply voltage<br>4. Monitor current'
+            };
+            return procedures[type] || 'Standard laboratory procedure for chemical reactions.';
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Auto-format chemical formulas
+        document.getElementById('reactants').addEventListener('input', function(e) {
+            // Convert numbers to subscripts
+            let value = e.target.value;
+            value = value.replace(/2/g, '₂')
+                        .replace(/3/g, '₃')
+                        .replace(/4/g, '₄')
+                        .replace(/5/g, '₅')
+                        .replace(/6/g, '₆')
+                        .replace(/7/g, '₇')
+                        .replace(/8/g, '₈')
+                        .replace(/9/g, '₉')
+                        .replace(/0/g, '₀')
+                        .replace(/1/g, '₁');
+            
+            e.target.value = value;
+        });
+    </script>
+
+    <style>
+        /* Additional styles for prediction page */
+        .btn-link {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        .prediction-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            padding: 30px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .reactants-side,
+        .products-side {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        .side-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .compounds {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .reaction-arrow {
+            font-size: 2rem;
+            color: var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        .prediction-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .info-item i {
+            color: var(--primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .analysis-item {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .analysis-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .analysis-icon i {
+            font-size: 1.25rem;
+            color: white;
+        }
+
+        .analysis-content h4 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .analysis-content p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .similar-reactions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .similar-reaction {
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .similar-reaction:hover {
+            transform: translateX(5px);
+            background: var(--bg-secondary);
+        }
+
+        .reaction-eq {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .reaction-type {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .reaction-types-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .reaction-type-card {
+            text-align: center;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .reaction-type-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .type-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .type-icon.synthesis { background: linear-gradient(135deg, #4cc9f0, #4361ee); }
+        .type-icon.decomposition { background: linear-gradient(135deg, #f72585, #b5179e); }
+        .type-icon.combustion { background: linear-gradient(135deg, #f8961e, #f3722c); }
+        .type-icon.replacement { background: linear-gradient(135deg, #90be6d, #43aa8b); }
+        .type-icon.acidbase { background: linear-gradient(135deg, #577590, #4d908e); }
+        .type-icon.redox { background: linear-gradient(135deg, #f94144, #f3722c); }
+
+        .reaction-type-card h4 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .reaction-type-card p {
+            font-family: var(--font-mono);
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .reaction-type-card small {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        @media (max-width: 768px) {
+            .prediction-display {
+                flex-direction: column;
+                gap: 15px;
+                padding: 20px;
+            }
+            
+            .reactants-side,
+            .products-side {
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .reaction-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .reaction-types-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html>

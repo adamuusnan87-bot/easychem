@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>🧪 ZamaniChem Engine - Advanced Chemistry Solver</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+<!-- Add these to your sidebar navigation in all template files -->
+<div class="nav-items">
+    <a href="/" class="nav-item">
+        <i class="fas fa-balance-scale"></i>
+        <span>Balance Equations</span>
+    </a>
+    <a href="/yield" class="nav-item">
+        <i class="fas fa-calculator"></i>
+        <span>Yield Calculator</span>
+    </a>
+    <a href="/solutions" class="nav-item">
+        <i class="fas fa-flask"></i>
+        <span>Solution Calculator</span>
+    </a>
+    <a href="/quiz" class="nav-item">
+        <i class="fas fa-question-circle"></i>
+        <span>Chemistry Quiz</span>
+    </a>
+    <a href="/predict" class="nav-item">
+        <i class="fas fa-crystal-ball"></i>
+        <span>Predict Products</span>
+    </a>
+    <a href="/database" class="nav-item">
+        <i class="fas fa-database"></i>
+        <span>Reaction Database</span>
+    </a>
+    <a href="/elements" class="nav-item">
+        <i class="fas fa-table"></i>
+        <span>Periodic Table</span>
+    </a>
+</div>
+        
+        <div class="nav-footer">
+            <div class="version">v3.0.0</div>
+            <div class="status">
+                <i class="fas fa-circle online"></i>
+                <span>Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <h1 class="animate__animated animate__fadeIn">
+                <i class="fas fa-flask"></i>
+                Advanced Chemistry Engine
+            </h1>
+            <p class="subtitle">Balance equations, predict products, calculate yields</p>
+            
+            <div class="quick-stats">
+                <div class="stat">
+                    <i class="fas fa-bolt"></i>
+                    <span>Fast Calculations</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Mobile Optimized</span>
+                </div>
+                <div class="stat">
+                    <i class="fas fa-database"></i>
+                    <span>Reaction Database</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Recent Reactions -->
+        <div class="recent-reactions">
+            <h3><i class="fas fa-history"></i> Recent Reactions</h3>
+            <div class="reactions-slider">
+                {% for eq, balanced, timestamp in recent_reactions[:3] %}
+                <div class="reaction-card">
+                    <div class="reaction-eq">{{ eq }}</div>
+                    <div class="reaction-result">{{ balanced[:30] }}...</div>
+                    <div class="reaction-time">{{ timestamp }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Main Form -->
+        <div class="card main-form-card">
+            <h2><i class="fas fa-pencil-alt"></i> Balance Chemical Equation</h2>
+            
+            <form method="POST" class="equation-form">
+                <div class="form-group">
+                    <label for="equation">
+                        <i class="fas fa-arrow-right"></i>
+                        Enter Chemical Equation
+                    </label>
+                    <div class="input-with-buttons">
+                        <input type="text" 
+                               id="equation" 
+                               name="equation" 
+                               placeholder="HCl + NaOH -> NaCl + H2O" 
+                               required
+                               autocomplete="off"
+                               autocorrect="off"
+                               autocapitalize="off"
+                               spellcheck="false">
+                        
+                        <div class="input-buttons">
+                            <button type="button" class="btn-icon" onclick="formatEquation()" title="Format Equation">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                            <button type="button" class="btn-icon" onclick="clearInput()" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-examples">
+                        <span>Quick Examples:</span>
+                        <button type="button" class="example-btn" onclick="setExample('H2 + O2 -> H2O')">
+                            H₂ + O₂ → H₂O
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('CH4 + O2 -> CO2 + H2O')">
+                            CH₄ + O₂ → CO₂ + H₂O
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('HCl + NaOH -> NaCl + H2O')">
+                            Acid-Base
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" name="action" value="balance" class="btn-primary">
+                        <i class="fas fa-play"></i>
+                        Balance Equation
+                    </button>
+                    
+                    <button type="submit" name="action" value="predict" class="btn-secondary">
+                        <i class="fas fa-crystal-ball"></i>
+                        Predict Products
+                    </button>
+                    
+                    <button type="button" class="btn-outline" onclick="openAdvancedOptions()">
+                        <i class="fas fa-sliders-h"></i>
+                        Advanced
+                    </button>
+                </div>
+                
+                <!-- Advanced Options (Collapsed) -->
+                <div class="advanced-options" id="advancedOptions">
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" name="show_states" id="showStates">
+                            Show States of Matter
+                        </label>
+                        <label>
+                            <input type="checkbox" name="calculate_enthalpy" id="calculateEnthalpy">
+                            Calculate ΔH
+                        </label>
+                        <label>
+                            <input type="checkbox" name="show_stoichiometry" id="showStoichiometry">
+                            Show Stoichiometry
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {% if result %}
+        <!-- Results Section -->
+        <div class="results-container animate__animated animate__fadeInUp">
+            <div class="results-header">
+                <h2><i class="fas fa-chart-bar"></i> Results</h2>
+                <div class="result-actions">
+                    <button class="btn-icon" onclick="copyResults()" title="Copy Results">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon" onclick="exportResults()" title="Export as PDF">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <button class="btn-icon" onclick="shareResults()" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            {% if result.error %}
+            <div class="error-card">
+                <div class="error-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Calculation Error</h3>
+                </div>
+                <p>{{ result.error }}</p>
+                <button class="btn-outline" onclick="retryCalculation()">
+                    <i class="fas fa-redo"></i>
+                    Try Again
+                </button>
+            </div>
+            {% endif %}
+            
+            {% if result.balanced %}
+            <!-- Balanced Equation Card -->
+            <div class="result-card highlight">
+                <div class="result-header">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Balanced Equation</h3>
+                    <span class="badge badge-success">Verified</span>
+                </div>
+                <div class="equation-display">
+                    <div class="equation">{{ result.balanced }}</div>
+                    <div class="equation-info">
+                        <span class="reaction-type">
+                            <i class="fas fa-tag"></i>
+                            {{ result.reaction_type }}
+                        </span>
+                        {% if result.delta_h %}
+                        <span class="enthalpy">
+                            <i class="fas fa-fire"></i>
+                            ΔH = {{ result.delta_h }} kJ/mol
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ionic Equations -->
+            <div class="result-grid">
+                <div class="result-card">
+                    <div class="result-header">
+                        <i class="fas fa-bolt"></i>
+                        <h3>Complete Ionic</h3>
+                    </div>
+                    <div class="equation-display ionic">
+                        {{ result.ionic }}
+                    </div>
+                </div>
+                
+                <div class="result-card">
+                    <div class="result-header">
+                        <i class="fas fa-filter"></i>
+                        <h3>Net Ionic</h3>
+                    </div>
+                    <div class="equation-display net-ionic">
+                        {{ result.net_ionic }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Components & Properties -->
+            {% if result.reactants %}
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-vial"></i>
+                    <h3>Reaction Components</h3>
+                </div>
+                
+                <div class="components-grid">
+                    <!-- Reactants -->
+                    <div class="components-column">
+                        <h4><i class="fas fa-arrow-left"></i> Reactants</h4>
+                        {% for comp in result.reactants %}
+                        <div class="compound-item">
+                            <div class="compound-header">
+                                <span class="compound-formula">{{ comp.formula }}</span>
+                                {% if result.molar_masses.get(comp.formula) %}
+                                <span class="compound-mass">
+                                    {{ result.molar_masses[comp.formula] }} g/mol
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="compound-details">
+                                {% if result.enthalpies.get(comp.formula) %}
+                                <span class="detail">
+                                    <i class="fas fa-fire"></i>
+                                    ΔHf = {{ result.enthalpies[comp.formula] }} kJ/mol
+                                </span>
+                                {% endif %}
+                                <span class="detail">
+                                    <i class="fas fa-atom"></i>
+                                    {{ comp.coefficient if comp.coefficient else 1 }} mole{% if comp.coefficient != 1 %}s{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Arrow -->
+                    <div class="reaction-arrow">
+                        <i class="fas fa-long-arrow-alt-right"></i>
+                    </div>
+                    
+                    <!-- Products -->
+                    <div class="components-column">
+                        <h4><i class="fas fa-arrow-right"></i> Products</h4>
+                        {% for comp in result.products %}
+                        <div class="compound-item">
+                            <div class="compound-header">
+                                <span class="compound-formula">{{ comp.formula }}</span>
+                                {% if result.molar_masses.get(comp.formula) %}
+                                <span class="compound-mass">
+                                    {{ result.molar_masses[comp.formula] }} g/mol
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="compound-details">
+                                {% if result.enthalpies.get(comp.formula) %}
+                                <span class="detail">
+                                    <i class="fas fa-fire"></i>
+                                    ΔHf = {{ result.enthalpies[comp.formula] }} kJ/mol
+                                </span>
+                                {% endif %}
+                                <span class="detail">
+                                    <i class="fas fa-atom"></i>
+                                    {{ comp.coefficient if comp.coefficient else 1 }} mole{% if comp.coefficient != 1 %}s{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- CTA Buttons -->
+                <div class="cta-buttons">
+                    <a href="/yield?equation={{ result.balanced|urlencode }}" class="cta-button primary">
+                        <i class="fas fa-calculator"></i>
+                        Calculate Yield & Limiting Reagent
+                    </a>
+                    <button class="cta-button secondary" onclick="saveReaction()">
+                        <i class="fas fa-bookmark"></i>
+                        Save to Database
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+            
+            {% if result.predicted %}
+            <!-- Prediction Results -->
+            <div class="result-card highlight">
+                <div class="result-header">
+                    <i class="fas fa-crystal-ball"></i>
+                    <h3>Predicted Products</h3>
+                    <span class="badge badge-info">AI Predicted</span>
+                </div>
+                <div class="equation-display">
+                    {{ result.predicted }}
+                </div>
+                <button class="btn-primary" onclick="balancePrediction()">
+                    <i class="fas fa-balance-scale"></i>
+                    Balance This Equation
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Features Grid -->
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-balance-scale-right"></i>
+                </div>
+                <h3>Smart Balancing</h3>
+                <p>Automatically balance chemical equations using advanced algorithms</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <h3>Yield Calculator</h3>
+                <p>Calculate limiting reagents, theoretical & percent yields</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-crystal-ball"></i>
+                </div>
+                <h3>Product Prediction</h3>
+                <p>Predict products based on reaction type and reactants</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h3>Reaction Database</h3>
+                <p>Save and search your previous reactions</p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4><i class="fas fa-atom"></i> ZamaniChem Engine</h4>
+                    <p>Advanced chemistry solver for students, educators, and researchers</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li>Equation Balancing</li>
+                        <li>Stoichiometry</li>
+                        <li>Product Prediction</li>
+                        <li>Reaction Database</li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: support@zamanichem.com</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 ZamaniChem Engine v3.0.0 | Advanced Chemistry Platform</p>
+                <div class="footer-stats">
+                    <span><i class="fas fa-bolt"></i> Fast</span>
+                    <span><i class="fas fa-mobile-alt"></i> Responsive</span>
+                    <span><i class="fas fa-shield-alt"></i> Secure</span>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner">
+                <i class="fas fa-atom fa-spin"></i>
+            </div>
+            <p>Calculating...</p>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Mobile navigation toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+            this.querySelector('i').classList.toggle('fa-bars');
+            this.querySelector('i').classList.toggle('fa-times');
+        });
+        
+        // Close sidebar when clicking on link (mobile)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    document.querySelector('.sidebar').classList.remove('active');
+                    document.querySelector('.mobile-nav-toggle i').classList.remove('fa-times');
+                    document.querySelector('.mobile-nav-toggle i').classList.add('fa-bars');
+                }
+            });
+        });
+        
+        // Form submission loading
+        document.querySelector('.equation-form').addEventListener('submit', function() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        });
+        
+        // Quick examples
+        function setExample(equation) {
+            document.getElementById('equation').value = equation;
+        }
+        
+        // Format equation
+        function formatEquation() {
+            const input = document.getElementById('equation');
+            let eq = input.value;
+            
+            // Add spaces around + and ->
+            eq = eq.replace(/([^ ])\+/g, '$1 + ');
+            eq = eq.replace(/\+([^ ])/g, '+ $1');
+            eq = eq.replace(/([^ ])->/g, '$1 -> ');
+            eq = eq.replace(/->([^ ])/g, '-> $1');
+            
+            // Capitalize properly
+            eq = eq.replace(/([a-z])([A-Z])/g, '$1 $2');
+            
+            input.value = eq.trim();
+            showToast('Equation formatted!');
+        }
+        
+        function clearInput() {
+            document.getElementById('equation').value = '';
+        }
+        
+        function openAdvancedOptions() {
+            const options = document.getElementById('advancedOptions');
+            options.classList.toggle('show');
+        }
+        
+        function copyResults() {
+            // Copy results to clipboard
+            const results = document.querySelector('.results-container').innerText;
+            navigator.clipboard.writeText(results).then(() => {
+                showToast('Results copied to clipboard!');
+            });
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.querySelector('[onclick="toggleDarkMode()"] i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                showToast('Dark mode enabled');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                showToast('Light mode enabled');
+            }
+        }
+        
+        // Auto-hide loading overlay when page loads
+        window.addEventListener('load', function() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

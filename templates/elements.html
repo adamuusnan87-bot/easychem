@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Periodic Table - ZamaniChem Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <style>
+        /* Periodic Table Specific Styles */
+        .periodic-table-container {
+            padding: 20px;
+        }
+        
+        .table-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .search-elements {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+        
+        .search-elements input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .search-elements i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 5px;
+            margin: 30px 0;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .element {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .element:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .element-number {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .element-symbol {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: white;
+        }
+        
+        .element-name {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .element-mass {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+        
+        /* Element categories */
+        .alkali-metal { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+        .alkaline-earth { background: linear-gradient(135deg, #feca57, #ff9f43); }
+        .transition-metal { background: linear-gradient(135deg, #48dbfb, #0abde3); }
+        .basic-metal { background: linear-gradient(135deg, #1dd1a1, #10ac84); }
+        .semimetal { background: linear-gradient(135deg, #f368e0, #ff9ff3); }
+        .nonmetal { background: linear-gradient(135deg, #54a0ff, #2e86de); }
+        .halogen { background: linear-gradient(135deg, #5f27cd, #341f97); }
+        .noble-gas { background: linear-gradient(135deg, #00d2d3, #01a3a4); }
+        .lanthanide { background: linear-gradient(135deg, #ff9ff3, #f368e0); }
+        .actinide { background: linear-gradient(135deg, #feca57, #ff9f43); }
+        
+        .empty-cell {
+            background: transparent;
+            border: 2px dashed var(--border-color);
+        }
+        
+        .element-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .element-detail-content {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .element-header {
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .element-symbol-large {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .element-name-large {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+        
+        .element-number-large {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+        
+        .element-details {
+            padding: 30px;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .detail-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .element-properties {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .properties-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .property {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .property:last-child {
+            border-bottom: none;
+        }
+        
+        .property-label {
+            color: var(--text-secondary);
+        }
+        
+        .property-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .element-actions {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .legend-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 1200px) {
+            .periodic-table {
+                grid-template-columns: repeat(9, 1fr);
+                grid-template-rows: repeat(20, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .periodic-table {
+                grid-template-columns: repeat(5, 1fr);
+                grid-template-rows: repeat(36, 1fr);
+            }
+            
+            .table-controls {
+                flex-direction: column;
+            }
+            
+            .search-elements {
+                min-width: auto;
+            }
+            
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .element-symbol-large {
+                font-size: 3rem;
+            }
+            
+            .element-name-large {
+                font-size: 1.25rem;
+            }
+            
+            .element {
+                padding: 5px;
+            }
+            
+            .element-symbol {
+                font-size: 1rem;
+            }
+            
+            .element-name {
+                font-size: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+        <div class="nav-items">
+            <a href="/" class="nav-item">
+                <i class="fas fa-balance-scale"></i>
+                <span>Balance Equations</span>
+            </a>
+            <a href="/yield" class="nav-item">
+                <i class="fas fa-calculator"></i>
+                <span>Yield Calculator</span>
+            </a>
+            <a href="/predict" class="nav-item">
+                <i class="fas fa-crystal-ball"></i>
+                <span>Predict Products</span>
+            </a>
+            <a href="/database" class="nav-item">
+                <i class="fas fa-database"></i>
+                <span>Reaction Database</span>
+            </a>
+            <a href="/elements" class="nav-item active">
+                <i class="fas fa-table"></i>
+                <span>Periodic Table</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <h1 class="animate__animated animate__fadeIn">
+                <i class="fas fa-table"></i>
+                Interactive Periodic Table
+            </h1>
+            <p class="subtitle">Explore elements and their properties</p>
+        </header>
+
+        <!-- Controls -->
+        <div class="card">
+            <div class="table-controls">
+                <div class="search-elements">
+                    <i class="fas fa-search"></i>
+                    <input type="text" 
+                           id="searchElements" 
+                           placeholder="Search elements by name, symbol, or number..."
+                           onkeyup="searchElements()">
+                </div>
+                
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterElements('all')">All</button>
+                    <button class="filter-btn" onclick="filterElements('metal')">Metals</button>
+                    <button class="filter-btn" onclick="filterElements('nonmetal')">Non-Metals</button>
+                    <button class="filter-btn" onclick="filterElements('noble')">Noble Gases</button>
+                    <button class="filter-btn" onclick="filterElements('alkali')">Alkali Metals</button>
+                    <button class="filter-btn" onclick="filterElements('transition')">Transition</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color alkali-metal"></div>
+                <span class="legend-label">Alkali Metals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color alkaline-earth"></div>
+                <span class="legend-label">Alkaline Earth</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color transition-metal"></div>
+                <span class="legend-label">Transition Metals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color basic-metal"></div>
+                <span class="legend-label">Basic Metals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color semimetal"></div>
+                <span class="legend-label">Metalloids</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color nonmetal"></div>
+                <span class="legend-label">Non-Metals</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color halogen"></div>
+                <span class="legend-label">Halogens</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color noble-gas"></div>
+                <span class="legend-label">Noble Gases</span>
+            </div>
+        </div>
+
+        <!-- Periodic Table -->
+        <div class="periodic-table-container">
+            <div class="periodic-table" id="periodicTable">
+                <!-- Generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Element Information -->
+        <div class="card info-card">
+            <h3><i class="fas fa-info-circle"></i> About the Periodic Table</h3>
+            <div class="info-content">
+                <p>The periodic table organizes all known chemical elements in order of increasing atomic number. Elements with similar chemical properties appear in vertical columns called groups.</p>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-sort-numeric-up"></i>
+                        </div>
+                        <div class="info-text">
+                            <h4>Atomic Number</h4>
+                            <p>Number of protons in the nucleus</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-weight"></i>
+                        </div>
+                        <div class="info-text">
+                            <h4>Atomic Mass</h4>
+                            <p>Average mass of atoms of an element</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="info-text">
+                            <h4>Periods</h4>
+                            <p>Horizontal rows (1-7)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">
+                            <i class="fas fa-columns"></i>
+                        </div>
+                        <div class="info-text">
+                            <h4>Groups</h4>
+                            <p>Vertical columns (1-18)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Element Detail Modal -->
+    <div class="element-detail-modal" id="elementDetailModal">
+        <div class="element-detail-content">
+            <div class="element-header" id="elementHeader">
+                <!-- Filled by JavaScript -->
+            </div>
+            
+            <div class="element-details">
+                <div class="detail-grid" id="elementDetails">
+                    <!-- Filled by JavaScript -->
+                </div>
+                
+                <div class="element-properties">
+                    <h4>Properties</h4>
+                    <div class="properties-list" id="elementProperties">
+                        <!-- Filled by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="element-actions">
+                <button class="btn-outline" onclick="insertElement()">
+                    <i class="fas fa-plus"></i>
+                    Insert in Equation
+                </button>
+                <button class="btn-primary" onclick="closeElementDetail()">
+                    <i class="fas fa-times"></i>
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile navigation toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        // Periodic table data
+        const elements = [
+            // Period 1
+            { symbol: 'H', name: 'Hydrogen', number: 1, mass: 1.008, group: 1, period: 1, category: 'nonmetal' },
+            { symbol: 'He', name: 'Helium', number: 2, mass: 4.0026, group: 18, period: 1, category: 'noble' },
+            
+            // Period 2
+            { symbol: 'Li', name: 'Lithium', number: 3, mass: 6.94, group: 1, period: 2, category: 'alkali' },
+            { symbol: 'Be', name: 'Beryllium', number: 4, mass: 9.0122, group: 2, period: 2, category: 'alkaline' },
+            { symbol: 'B', name: 'Boron', number: 5, mass: 10.81, group: 13, period: 2, category: 'semimetal' },
+            { symbol: 'C', name: 'Carbon', number: 6, mass: 12.011, group: 14, period: 2, category: 'nonmetal' },
+            { symbol: 'N', name: 'Nitrogen', number: 7, mass: 14.007, group: 15, period: 2, category: 'nonmetal' },
+            { symbol: 'O', name: 'Oxygen', number: 8, mass: 16.00, group: 16, period: 2, category: 'nonmetal' },
+            { symbol: 'F', name: 'Fluorine', number: 9, mass: 19.00, group: 17, period: 2, category: 'halogen' },
+            { symbol: 'Ne', name: 'Neon', number: 10, mass: 20.180, group: 18, period: 2, category: 'noble' },
+            
+            // Period 3
+            { symbol: 'Na', name: 'Sodium', number: 11, mass: 22.990, group: 1, period: 3, category: 'alkali' },
+            { symbol: 'Mg', name: 'Magnesium', number: 12, mass: 24.305, group: 2, period: 3, category: 'alkaline' },
+            { symbol: 'Al', name: 'Aluminum', number: 13, mass: 26.982, group: 13, period: 3, category: 'basic' },
+            { symbol: 'Si', name: 'Silicon', number: 14, mass: 28.085, group: 14, period: 3, category: 'semimetal' },
+            { symbol: 'P', name: 'Phosphorus', number: 15, mass: 30.974, group: 15, period: 3, category: 'nonmetal' },
+            { symbol: 'S', name: 'Sulfur', number: 16, mass: 32.06, group: 16, period: 3, category: 'nonmetal' },
+            { symbol: 'Cl', name: 'Chlorine', number: 17, mass: 35.45, group: 17, period: 3, category: 'halogen' },
+            { symbol: 'Ar', name: 'Argon', number: 18, mass: 39.948, group: 18, period: 3, category: 'noble' },
+            
+            // Period 4
+            { symbol: 'K', name: 'Potassium', number: 19, mass: 39.098, group: 1, period: 4, category: 'alkali' },
+            { symbol: 'Ca', name: 'Calcium', number: 20, mass: 40.078, group: 2, period: 4, category: 'alkaline' },
+            { symbol: 'Sc', name: 'Scandium', number: 21, mass: 44.956, group: 3, period: 4, category: 'transition' },
+            { symbol: 'Ti', name: 'Titanium', number: 22, mass: 47.867, group: 4, period: 4, category: 'transition' },
+            { symbol: 'V', name: 'Vanadium', number: 23, mass: 50.942, group: 5, period: 4, category: 'transition' },
+            { symbol: 'Cr', name: 'Chromium', number: 24, mass: 51.996, group: 6, period: 4, category: 'transition' },
+            { symbol: 'Mn', name: 'Manganese', number: 25, mass: 54.938, group: 7, period: 4, category: 'transition' },
+            { symbol: 'Fe', name: 'Iron', number: 26, mass: 55.845, group: 8, period: 4, category: 'transition' },
+            { symbol: 'Co', name: 'Cobalt', number: 27, mass: 58.933, group: 9, period: 4, category: 'transition' },
+            { symbol: 'Ni', name: 'Nickel', number: 28, mass: 58.693, group: 10, period: 4, category: 'transition' },
+            { symbol: 'Cu', name: 'Copper', number: 29, mass: 63.546, group: 11, period: 4, category: 'transition' },
+            { symbol: 'Zn', name: 'Zinc', number: 30, mass: 65.38, group: 12, period: 4, category: 'transition' },
+            { symbol: 'Ga', name: 'Gallium', number: 31, mass: 69.723, group: 13, period: 4, category: 'basic' },
+            { symbol: 'Ge', name: 'Germanium', number: 32, mass: 72.63, group: 14, period: 4, category: 'semimetal' },
+            { symbol: 'As', name: 'Arsenic', number: 33, mass: 74.922, group: 15, period: 4, category: 'semimetal' },
+            { symbol: 'Se', name: 'Selenium', number: 34, mass: 78.96, group: 16, period: 4, category: 'nonmetal' },
+            { symbol: 'Br', name: 'Bromine', number: 35, mass: 79.904, group: 17, period: 4, category: 'halogen' },
+            { symbol: 'Kr', name: 'Krypton', number: 36, mass: 83.798, group: 18, period: 4, category: 'noble' },
+            
+            // Additional important elements
+            { symbol: 'Ag', name: 'Silver', number: 47, mass: 107.87, group: 11, period: 5, category: 'transition' },
+            { symbol: 'I', name: 'Iodine', number: 53, mass: 126.90, group: 17, period: 5, category: 'halogen' },
+            { symbol: 'Ba', name: 'Barium', number: 56, mass: 137.33, group: 2, period: 6, category: 'alkaline' },
+            { symbol: 'Au', name: 'Gold', number: 79, mass: 196.97, group: 11, period: 6, category: 'transition' },
+            { symbol: 'Hg', name: 'Mercury', number: 80, mass: 200.59, group: 12, period: 6, category: 'transition' },
+            { symbol: 'Pb', name: 'Lead', number: 82, mass: 207.2, group: 14, period: 6, category: 'basic' },
+            { symbol: 'U', name: 'Uranium', number: 92, mass: 238.03, group: 3, period: 7, category: 'actinide' },
+        ];
+
+        // Generate periodic table
+        function generatePeriodicTable() {
+            const container = document.getElementById('periodicTable');
+            container.innerHTML = '';
+            
+            // Create 10 rows × 18 columns grid
+            for (let period = 1; period <= 10; period++) {
+                for (let group = 1; group <= 18; group++) {
+                    const element = elements.find(e => e.group === group && e.period === period);
+                    
+                    const cell = document.createElement('div');
+                    
+                    if (element) {
+                        const categoryClass = getCategoryClass(element.category);
+                        cell.className = `element ${categoryClass}`;
+                        cell.innerHTML = `
+                            <div class="element-number">${element.number}</div>
+                            <div class="element-symbol">${element.symbol}</div>
+                            <div class="element-name">${element.name}</div>
+                            <div class="element-mass">${element.mass.toFixed(2)}</div>
+                        `;
+                        cell.dataset.element = JSON.stringify(element);
+                        cell.onclick = () => showElementDetail(element);
+                    } else {
+                        // Empty cell
+                        cell.className = 'element empty-cell';
+                    }
+                    
+                    // Position the cell
+                    cell.style.gridRow = period;
+                    cell.style.gridColumn = group;
+                    
+                    container.appendChild(cell);
+                }
+            }
+        }
+        
+        function getCategoryClass(category) {
+            const classes = {
+                'alkali': 'alkali-metal',
+                'alkaline': 'alkaline-earth',
+                'transition': 'transition-metal',
+                'basic': 'basic-metal',
+                'semimetal': 'semimetal',
+                'nonmetal': 'nonmetal',
+                'halogen': 'halogen',
+                'noble': 'noble-gas',
+                'lanthanide': 'lanthanide',
+                'actinide': 'actinide'
+            };
+            return classes[category] || 'basic-metal';
+        }
+        
+        let currentElement = null;
+        
+        function showElementDetail(element) {
+            currentElement = element;
+            
+            // Update header
+            const header = document.getElementById('elementHeader');
+            header.innerHTML = `
+                <div class="element-symbol-large" style="color: ${getCategoryColor(element.category)}">
+                    ${element.symbol}
+                </div>
+                <div class="element-name-large">${element.name}</div>
+                <div class="element-number-large">Atomic Number: ${element.number}</div>
+            `;
+            
+            // Update details
+            const details = document.getElementById('elementDetails');
+            details.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Symbol</div>
+                    <div class="detail-value">${element.symbol}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Atomic Mass</div>
+                    <div class="detail-value">${element.mass} u</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Group</div>
+                    <div class="detail-value">${element.group}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Period</div>
+                    <div class="detail-value">${element.period}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Category</div>
+                    <div class="detail-value">${getCategoryName(element.category)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">State at STP</div>
+                    <div class="detail-value">${getState(element)}</div>
+                </div>
+            `;
+            
+            // Update properties
+            const properties = document.getElementById('elementProperties');
+            properties.innerHTML = `
+                <div class="property">
+                    <span class="property-label">Electron Configuration</span>
+                    <span class="property-value">${getElectronConfig(element.number)}</span>
+                </div>
+                <div class="property">
+                    <span class="property-label">Electronegativity</span>
+                    <span class="property-value">${getElectronegativity(element.symbol)}</span>
+                </div>
+                <div class="property">
+                    <span class="property-label">Melting Point</span>
+                    <span class="property-value">${getMeltingPoint(element.symbol)} °C</span>
+                </div>
+                <div class="property">
+                    <span class="property-label">Boiling Point</span>
+                    <span class="property-value">${getBoilingPoint(element.symbol)} °C</span>
+                </div>
+                <div class="property">
+                    <span class="property-label">Density</span>
+                    <span class="property-value">${getDensity(element.symbol)} g/cm³</span>
+                </div>
+            `;
+            
+            // Show modal
+            document.getElementById('elementDetailModal').style.display = 'flex';
+        }
+        
+        function getCategoryColor(category) {
+            const colors = {
+                'alkali': '#ff6b6b',
+                'alkaline': '#feca57',
+                'transition': '#48dbfb',
+                'basic': '#1dd1a1',
+                'semimetal': '#f368e0',
+                'nonmetal': '#54a0ff',
+                'halogen': '#5f27cd',
+                'noble': '#00d2d3'
+            };
+            return colors[category] || '#4361ee';
+        }
+        
+        function getCategoryName(category) {
+            const names = {
+                'alkali': 'Alkali Metal',
+                'alkaline': 'Alkaline Earth Metal',
+                'transition': 'Transition Metal',
+                'basic': 'Basic Metal',
+                'semimetal': 'Metalloid',
+                'nonmetal': 'Non-Metal',
+                'halogen': 'Halogen',
+                'noble': 'Noble Gas',
+                'lanthanide': 'Lanthanide',
+                'actinide': 'Actinide'
+            };
+            return names[category] || 'Unknown';
+        }
+        
+        function getState(element) {
+            const gases = ['H', 'He', 'N', 'O', 'F', 'Ne', 'Cl', 'Ar', 'Kr', 'Xe', 'Rn'];
+            const liquids = ['Br', 'Hg'];
+            const solids = elements.filter(e => !gases.includes(e.symbol) && !liquids.includes(e.symbol)).map(e => e.symbol);
+            
+            if (gases.includes(element.symbol)) return 'Gas';
+            if (liquids.includes(element.symbol)) return 'Liquid';
+            return 'Solid';
+        }
+        
+        function getElectronConfig(number) {
+            const configs = {
+                1: '1s¹',
+                2: '1s²',
+                3: '[He] 2s¹',
+                6: '[He] 2s² 2p²',
+                7: '[He] 2s² 2p³',
+                8: '[He] 2s² 2p⁴',
+                11: '[Ne] 3s¹',
+                12: '[Ne] 3s²',
+                13: '[Ne] 3s² 3p¹',
+                14: '[Ne] 3s² 3p²',
+                15: '[Ne] 3s² 3p³',
+                16: '[Ne] 3s² 3p⁴',
+                17: '[Ne] 3s² 3p⁵',
+                18: '[Ne] 3s² 3p⁶',
+                19: '[Ar] 4s¹',
+                20: '[Ar] 4s²',
+                26: '[Ar] 4s² 3d⁶',
+                29: '[Ar] 4s¹ 3d¹⁰',
+                30: '[Ar] 4s² 3d¹⁰',
+                35: '[Ar] 4s² 3d¹⁰ 4p⁵',
+                36: '[Ar] 4s² 3d¹⁰ 4p⁶'
+            };
+            return configs[number] || '...';
+        }
+        
+        function getElectronegativity(symbol) {
+            const en = {
+                'H': 2.20, 'He': 0.00, 'Li': 0.98, 'Be': 1.57, 'B': 2.04,
+                'C': 2.55, 'N': 3.04, 'O': 3.44, 'F': 3.98, 'Ne': 0.00,
+                'Na': 0.93, 'Mg': 1.31, 'Al': 1.61, 'Si': 1.90, 'P': 2.19,
+                'S': 2.58, 'Cl': 3.16, 'Ar': 0.00, 'K': 0.82, 'Ca': 1.00,
+                'Fe': 1.83, 'Cu': 1.90, 'Zn': 1.65, 'Br': 2.96, 'Ag': 1.93,
+                'I': 2.66, 'Au': 2.54, 'Hg': 2.00, 'Pb': 2.33
+            };
+            return en[symbol] || '—';
+        }
+        
+        function getMeltingPoint(symbol) {
+            const mp = {
+                'H': -259, 'He': -272, 'Li': 180, 'Be': 1287, 'C': 3550,
+                'N': -210, 'O': -219, 'F': -220, 'Ne': -249, 'Na': 98,
+                'Mg': 650, 'Al': 660, 'Si': 1410, 'P': 44, 'S': 115,
+                'Cl': -101, 'Ar': -189, 'K': 64, 'Ca': 842, 'Fe': 1538,
+                'Cu': 1085, 'Zn': 420, 'Br': -7, 'Ag': 962, 'I': 114,
+                'Au': 1064, 'Hg': -39, 'Pb': 327
+            };
+            return mp[symbol] || '—';
+        }
+        
+        function getBoilingPoint(symbol) {
+            const bp = {
+                'H': -253, 'He': -269, 'Li': 1342, 'Be': 2470, 'C': 4027,
+                'N': -196, 'O': -183, 'F': -188, 'Ne': -246, 'Na': 883,
+                'Mg': 1090, 'Al': 2467, 'Si': 2355, 'P': 280, 'S': 445,
+                'Cl': -34, 'Ar': -186, 'K': 774, 'Ca': 1484, 'Fe': 2861,
+                'Cu': 2562, 'Zn': 907, 'Br': 59, 'Ag': 2162, 'I': 184,
+                'Au': 2856, 'Hg': 357, 'Pb': 1749
+            };
+            return bp[symbol] || '—';
+        }
+        
+        function getDensity(symbol) {
+            const density = {
+                'H': 0.0899, 'He': 0.1785, 'Li': 0.534, 'Be': 1.85, 'C': 2.26,
+                'N': 1.2506, 'O': 1.429, 'F': 1.696, 'Ne': 0.9002, 'Na': 0.971,
+                'Mg': 1.738, 'Al': 2.70, 'Si': 2.33, 'P': 1.82, 'S': 2.07,
+                'Cl': 3.214, 'Ar': 1.784, 'K': 0.862, 'Ca': 1.55, 'Fe': 7.87,
+                'Cu': 8.96, 'Zn': 7.14, 'Br': 3.12, 'Ag': 10.49, 'I': 4.93,
+                'Au': 19.32, 'Hg': 13.53, 'Pb': 11.34
+            };
+            return density[symbol] || '—';
+        }
+        
+        function closeElementDetail() {
+            document.getElementById('elementDetailModal').style.display = 'none';
+        }
+        
+        function insertElement() {
+            if (currentElement) {
+                // Send element to main page for insertion
+                window.opener?.postMessage({
+                    type: 'insert_element',
+                    symbol: currentElement.symbol
+                }, '*');
+                
+                // Close modal
+                closeElementDetail();
+                showToast(`Inserted ${currentElement.symbol} into equation`);
+            }
+        }
+        
+        function searchElements() {
+            const query = document.getElementById('searchElements').value.toLowerCase();
+            const cells = document.querySelectorAll('.element:not(.empty-cell)');
+            
+            cells.forEach(cell => {
+                const element = JSON.parse(cell.dataset.element);
+                const matches = element.symbol.toLowerCase().includes(query) ||
+                               element.name.toLowerCase().includes(query) ||
+                               element.number.toString().includes(query);
+                
+                cell.style.opacity = matches ? '1' : '0.3';
+                cell.style.transform = matches ? 'scale(1)' : 'scale(0.9)';
+            });
+        }
+        
+        function filterElements(filter) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const cells = document.querySelectorAll('.element:not(.empty-cell)');
+            
+            cells.forEach(cell => {
+                const element = JSON.parse(cell.dataset.element);
+                let matches = false;
+                
+                switch(filter) {
+                    case 'all':
+                        matches = true;
+                        break;
+                    case 'metal':
+                        matches = ['alkali', 'alkaline', 'transition', 'basic', 'lanthanide', 'actinide'].includes(element.category);
+                        break;
+                    case 'nonmetal':
+                        matches = ['nonmetal', 'halogen', 'noble'].includes(element.category);
+                        break;
+                    case 'noble':
+                        matches = element.category === 'noble';
+                        break;
+                    case 'alkali':
+                        matches = element.category === 'alkali';
+                        break;
+                    case 'transition':
+                        matches = element.category === 'transition';
+                        break;
+                    default:
+                        matches = true;
+                }
+                
+                cell.style.opacity = matches ? '1' : '0.3';
+                cell.style.transform = matches ? 'scale(1)' : 'scale(0.9)';
+            });
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast show';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            generatePeriodicTable();
+            
+            // Close modal on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeElementDetail();
+                }
+            });
+            
+            // Close modal on background click
+            document.getElementById('elementDetailModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeElementDetail();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

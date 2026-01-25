@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Yield Calculator - ZamaniChem Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+<!-- Add these to your sidebar navigation in all template files -->
+<div class="nav-items">
+    <a href="/" class="nav-item">
+        <i class="fas fa-balance-scale"></i>
+        <span>Balance Equations</span>
+    </a>
+    <a href="/yield" class="nav-item">
+        <i class="fas fa-calculator"></i>
+        <span>Yield Calculator</span>
+    </a>
+    <a href="/solutions" class="nav-item">
+        <i class="fas fa-flask"></i>
+        <span>Solution Calculator</span>
+    </a>
+    <a href="/quiz" class="nav-item">
+        <i class="fas fa-question-circle"></i>
+        <span>Chemistry Quiz</span>
+    </a>
+    <a href="/predict" class="nav-item">
+        <i class="fas fa-crystal-ball"></i>
+        <span>Predict Products</span>
+    </a>
+    <a href="/database" class="nav-item">
+        <i class="fas fa-database"></i>
+        <span>Reaction Database</span>
+    </a>
+    <a href="/elements" class="nav-item">
+        <i class="fas fa-table"></i>
+        <span>Periodic Table</span>
+    </a>
+</div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <h1 class="animate__animated animate__fadeIn">
+                <i class="fas fa-calculator"></i>
+                Stoichiometry & Yield Calculator
+            </h1>
+            <p class="subtitle">Calculate limiting reagents, theoretical yield, and percent yield</p>
+        </header>
+
+        <!-- Calculator Form -->
+        <div class="card main-form-card">
+            <h2><i class="fas fa-flask"></i> Stoichiometry Calculator</h2>
+            
+            <form method="POST" class="yield-form">
+                <div class="form-group">
+                    <label for="equation">
+                        <i class="fas fa-arrow-right"></i>
+                        Chemical Equation
+                    </label>
+                    <input type="text" 
+                           id="equation" 
+                           name="equation" 
+                           placeholder="2H2 + O2 -> 2H2O" 
+                           required
+                           value="{{ request.form.equation or '' }}">
+                    
+                    <div class="quick-examples">
+                        <span>Quick Examples:</span>
+                        <button type="button" class="example-btn" onclick="setExample('2H2 + O2 -> 2H2O')">
+                            Combustion
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('HCl + NaOH -> NaCl + H2O')">
+                            Acid-Base
+                        </button>
+                        <button type="button" class="example-btn" onclick="setExample('Zn + 2HCl -> ZnCl2 + H2')">
+                            Single Replacement
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reactants Input -->
+                <div class="form-group" id="reactantsGroup">
+                    <h3><i class="fas fa-vial"></i> Reactant Amounts</h3>
+                    <div class="reactants-grid" id="reactantsContainer">
+                        <!-- Dynamic inputs will be added here -->
+                    </div>
+                    <small class="hint">Enter amounts for at least two reactants</small>
+                </div>
+
+                <!-- Units and Options -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="unit">
+                            <i class="fas fa-weight"></i>
+                            Unit
+                        </label>
+                        <select id="unit" name="unit" class="form-select">
+                            <option value="grams" selected>Grams (g)</option>
+                            <option value="moles">Moles (mol)</option>
+                            <option value="milligrams">Milligrams (mg)</option>
+                            <option value="kilograms">Kilograms (kg)</option>
+                            <option value="liters">Liters (L) at STP</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="target_product">
+                            <i class="fas fa-bullseye"></i>
+                            Target Product
+                        </label>
+                        <select id="target_product" name="target_product" class="form-select">
+                            <option value="">Select Product</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Actual Yield (Optional) -->
+                <div class="form-group">
+                    <label for="actual_yield">
+                        <i class="fas fa-chart-line"></i>
+                        Actual Yield (Optional)
+                    </label>
+                    <input type="number" 
+                           id="actual_yield" 
+                           name="actual_yield" 
+                           placeholder="Enter actual yield for percent calculation"
+                           step="0.001">
+                    <small class="hint">Leave empty for theoretical yield only</small>
+                </div>
+
+                <!-- Calculate Button -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-calculator"></i>
+                        Calculate Stoichiometry
+                    </button>
+                    
+                    <button type="button" class="btn-secondary" onclick="resetForm()">
+                        <i class="fas fa-redo"></i>
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if result %}
+        <!-- Results Section -->
+        <div class="results-container animate__animated animate__fadeInUp">
+            <div class="results-header">
+                <h2><i class="fas fa-chart-pie"></i> Stoichiometry Results</h2>
+                <div class="result-actions">
+                    <button class="btn-icon" onclick="exportResults()" title="Export Results">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            
+            {% if result.error %}
+            <div class="error-card">
+                <div class="error-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Calculation Error</h3>
+                </div>
+                <p>{{ result.error }}</p>
+            </div>
+            {% endif %}
+            
+            {% if result.limiting %}
+            <!-- Limiting Reagent Card -->
+            <div class="result-card highlight">
+                <div class="result-header">
+                    <i class="fas fa-weight-hanging"></i>
+                    <h3>Limiting Reagent</h3>
+                    <span class="badge badge-warning">Critical</span>
+                </div>
+                <div class="limiting-reagent-display">
+                    <div class="reagent-info">
+                        <div class="reagent-name">{{ result.limiting }}</div>
+                        <div class="reagent-amount">{{ result.limiting_amount }} {{ result.unit or 'g' }}</div>
+                    </div>
+                    <div class="reagent-explanation">
+                        <p><i class="fas fa-info-circle"></i> This reactant will be completely consumed first, limiting the amount of product formed.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Theoretical Yields -->
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Theoretical Yields</h3>
+                </div>
+                <div class="yields-grid">
+                    {% for product, yield_amount in result.theoretical_yields.items() %}
+                    <div class="yield-card">
+                        <div class="yield-product">{{ product }}</div>
+                        <div class="yield-amount">{{ yield_amount }} {{ result.unit or 'g' }}</div>
+                        <div class="yield-label">Theoretical</div>
+                        
+                        {% if result.percent_yields and result.percent_yields.get(product) %}
+                        <div class="percent-yield">
+                            <div class="percent-value">{{ result.percent_yields[product] }}%</div>
+                            <div class="percent-label">Percent Yield</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Excess Reactants -->
+            {% if result.excess %}
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-plus-circle"></i>
+                    <h3>Excess Reactants</h3>
+                </div>
+                <div class="excess-grid">
+                    {% for reagent, amount in result.excess.items() %}
+                    <div class="excess-item">
+                        <div class="excess-reagent">{{ reagent }}</div>
+                        <div class="excess-amount">+{{ amount }} {{ result.unit or 'g' }}</div>
+                        <div class="excess-label">Remaining</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Stoichiometric Ratios -->
+            {% if result.ratios %}
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-balance-scale"></i>
+                    <h3>Stoichiometric Ratios</h3>
+                </div>
+                <div class="ratios-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Reactant</th>
+                                <th>Amount</th>
+                                <th>Moles</th>
+                                <th>Ratio to Limiting</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reactant, data in result.ratios.items() %}
+                            <tr class="{{ 'limiting' if reactant == result.limiting else '' }}">
+                                <td>{{ reactant }}</td>
+                                <td>{{ data.amount }} {{ result.unit or 'g' }}</td>
+                                <td>{{ data.moles|round(4) }} mol</td>
+                                <td>
+                                    <div class="ratio-bar">
+                                        <div class="ratio-fill" style="width: {{ (data.ratio * 100)|min(100) }}%"></div>
+                                        <span class="ratio-value">{{ data.ratio|round(2) }}:1</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Reaction Summary -->
+            <div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>Reaction Summary</h3>
+                </div>
+                <div class="summary-content">
+                    <div class="equation-display">
+                        {{ result.balanced_eq }}
+                    </div>
+                    
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Limiting Reagent</div>
+                            <div class="summary-value">{{ result.limiting }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Theoretical Yield</div>
+                            <div class="summary-value">
+                                {% for product, yield in result.theoretical_yields.items() %}
+                                {{ product }}: {{ yield }} {{ result.unit or 'g' }}<br>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if result.percent_yields %}
+                        <div class="summary-item">
+                            <div class="summary-label">Percent Yield</div>
+                            <div class="summary-value">
+                                {% for product, percent in result.percent_yields.items() %}
+                                {{ product }}: {{ percent }}%<br>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Information Section -->
+        <div class="card info-card">
+            <h3><i class="fas fa-lightbulb"></i> How to Use</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <h4>Enter Equation</h4>
+                    <p>Write a balanced chemical equation with reactants and products</p>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-weight"></i>
+                    </div>
+                    <h4>Input Amounts</h4>
+                    <p>Enter the amounts of at least two reactants in any unit</p>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h4>Calculate</h4>
+                    <p>The calculator will determine limiting reagent and theoretical yields</p>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h4>Analyze Results</h4>
+                    <p>View detailed stoichiometry, excess reactants, and yields</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Mobile navigation toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        // Close sidebar when clicking on link (mobile)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    document.querySelector('.sidebar').classList.remove('active');
+                }
+            });
+        });
+
+        // Parse equation and extract reactants
+        const equationInput = document.getElementById('equation');
+        equationInput.addEventListener('change', extractReactants);
+        equationInput.addEventListener('blur', extractReactants);
+
+        function extractReactants() {
+            const equation = equationInput.value;
+            if (!equation.includes('->') && !equation.includes('=')) return;
+
+            // Extract left side of equation (reactants)
+            const separator = equation.includes('->') ? '->' : '=';
+            const reactantsStr = equation.split(separator)[0];
+            
+            // Parse reactants (handle coefficients)
+            const reactants = reactantsStr.split('+')
+                .map(r => r.trim())
+                .filter(r => r)
+                .map(r => {
+                    // Remove coefficient
+                    const match = r.match(/^(\d*)(.+)/);
+                    return match ? match[2] : r;
+                });
+
+            // Update reactants container
+            const container = document.getElementById('reactantsContainer');
+            container.innerHTML = '';
+
+            reactants.forEach(reactant => {
+                const reactantDiv = document.createElement('div');
+                reactantDiv.className = 'reactant-input';
+                reactantDiv.innerHTML = `
+                    <label for="reactant_${reactant}">${reactant}</label>
+                    <input type="number" 
+                           id="reactant_${reactant}" 
+                           name="reactant_${reactant}"
+                           placeholder="Amount"
+                           step="0.001"
+                           min="0"
+                           required>
+                    <span class="unit-label">${document.getElementById('unit').value}</span>
+                `;
+                container.appendChild(reactantDiv);
+            });
+
+            // Update target product dropdown
+            const productsStr = equation.split(separator)[1];
+            const products = productsStr.split('+')
+                .map(p => p.trim())
+                .filter(p => p)
+                .map(p => {
+                    const match = p.match(/^(\d*)(.+)/);
+                    return match ? match[2] : p;
+                });
+
+            const targetSelect = document.getElementById('target_product');
+            targetSelect.innerHTML = '<option value="">Select Product</option>';
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.textContent = product;
+                targetSelect.appendChild(option);
+            });
+        }
+
+        // Update unit labels when unit changes
+        document.getElementById('unit').addEventListener('change', function() {
+            const unit = this.value;
+            document.querySelectorAll('.unit-label').forEach(label => {
+                label.textContent = unit;
+            });
+        });
+
+        function setExample(equation) {
+            document.getElementById('equation').value = equation;
+            extractReactants();
+        }
+
+        function resetForm() {
+            document.querySelector('.yield-form').reset();
+            document.getElementById('reactantsContainer').innerHTML = '';
+            document.getElementById('target_product').innerHTML = '<option value="">Select Product</option>';
+        }
+
+        function exportResults() {
+            const results = document.querySelector('.results-container');
+            if (!results) {
+                showToast('No results to export', 'error');
+                return;
+            }
+
+            // Simple text export
+            const text = results.innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.download = 'stoichiometry-results.txt';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            showToast('Results exported!');
+        }
+
+        function showToast(message, type = 'info') {
+            // Create toast if doesn't exist
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'toast';
+                document.body.appendChild(toast);
+            }
+
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // If equation is in URL parameters, load it
+            const urlParams = new URLSearchParams(window.location.search);
+            const equation = urlParams.get('equation');
+            if (equation) {
+                document.getElementById('equation').value = decodeURIComponent(equation);
+                extractReactants();
+            }
+        });
+    </script>
+
+    <style>
+        /* Additional styles for yield calculator */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .reactants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .reactant-input {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .reactant-input label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .reactant-input input {
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .unit-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .limiting-reagent-display {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .reagent-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0, 114, 255, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid var(--warning);
+        }
+
+        .reagent-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--warning);
+        }
+
+        .reagent-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .reagent-explanation {
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .yields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .yield-card {
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+        }
+
+        .yield-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .yield-product {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .yield-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--success);
+            margin-bottom: 5px;
+        }
+
+        .yield-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .percent-yield {
+            padding: 10px;
+            background: rgba(76, 201, 240, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .percent-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--success);
+        }
+
+        .percent-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .excess-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .excess-item {
+            padding: 15px;
+            background: rgba(248, 150, 30, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(248, 150, 30, 0.2);
+        }
+
+        .excess-reagent {
+            font-weight: bold;
+            color: var(--warning);
+            margin-bottom: 5px;
+        }
+
+        .excess-amount {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .excess-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .ratios-table {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        .ratios-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ratios-table th {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .ratios-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ratios-table tr.limiting {
+            background: rgba(0, 114, 255, 0.05);
+        }
+
+        .ratios-table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .ratio-bar {
+            position: relative;
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .ratio-fill {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transition: width 0.5s ease;
+        }
+
+        .ratio-value {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-item {
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .summary-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .info-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .info-icon i {
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .info-item h4 {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .info-item p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .reactants-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .yields-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .excess-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .reagent-info {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</body>
+</html>
