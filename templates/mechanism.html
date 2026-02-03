@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Mechanisms - ZamaniChem</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .mechanism-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .mechanism-viewer {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .step-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+        }
+        
+        .step-equation {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .electron-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            min-height: 100px;
+        }
+        
+        .arrow {
+            font-size: 2rem;
+            color: var(--accent);
+            animation: pulse 2s infinite;
+        }
+        
+        .mechanism-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .step-dot.active {
+            background: var(--primary);
+            transform: scale(1.3);
+        }
+        
+        .energy-diagram {
+            height: 200px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .energy-curve {
+            position: absolute;
+            bottom: 20px;
+            left: 50px;
+            right: 50px;
+            height: 120px;
+        }
+        
+        .energy-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .energy-label {
+            position: absolute;
+            top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transform: translateX(-50%);
+        }
+        
+        .intermediate-display {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 3px solid var(--warning);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        @media (max-width: 768px) {
+            .step-equation {
+                font-size: 1.2rem;
+            }
+            
+            .arrow {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+        <div class="nav-items">
+            <a href="/" class="nav-item">
+                <i class="fas fa-balance-scale"></i>
+                <span>Balance Equations</span>
+            </a>
+            <a href="/mechanism" class="nav-item active">
+                <i class="fas fa-project-diagram"></i>
+                <span>Reaction Mechanisms</span>
+            </a>
+            <a href="/quiz" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Chemistry Quiz</span>
+            </a>
+            <a href="/elements" class="nav-item">
+                <i class="fas fa-table"></i>
+                <span>Periodic Table</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="main-header">
+            <h1><i class="fas fa-project-diagram"></i> Reaction Mechanism Animator</h1>
+            <p class="subtitle">Visualize step-by-step reaction mechanisms with electron flow</p>
+        </header>
+
+        <div class="mechanism-container">
+            <!-- Mechanism Selection -->
+            <div class="card">
+                <h3><i class="fas fa-flask"></i> Select Reaction Mechanism</h3>
+                <form id="mechanismForm">
+                    <div class="form-group">
+                        <label for="mechanismType">
+                            <i class="fas fa-tag"></i>
+                            Mechanism Type
+                        </label>
+                        <select id="mechanismType" name="mechanismType" class="form-select">
+                            <option value="sn2">SN2 Nucleophilic Substitution</option>
+                            <option value="e2">E2 Elimination</option>
+                            <option value="acid_base">Acid-Base Reaction</option>
+                            <option value="redox">Redox Reaction</option>
+                            <option value="esterification">Esterification</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-play"></i>
+                        Load Mechanism
+                    </button>
+                </form>
+            </div>
+
+            <!-- Mechanism Viewer -->
+            <div class="mechanism-viewer">
+                <div id="mechanismContent">
+                    <div class="step-display">
+                        <div>
+                            <h3>Select a reaction mechanism to begin</h3>
+                            <p class="subtitle">Choose from common organic and inorganic reaction mechanisms</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Energy Diagram -->
+            <div class="card">
+                <h3><i class="fas fa-chart-line"></i> Energy Profile</h3>
+                <div class="energy-diagram" id="energyDiagram">
+                    <!-- Energy diagram will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Mechanism Information -->
+            <div class="card">
+                <h3><i class="fas fa-info-circle"></i> Mechanism Details</h3>
+                <div id="mechanismInfo">
+                    <p>Select a mechanism to view detailed information about the reaction pathway, intermediates, and rate-determining steps.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Mobile navigation toggle
+        document.querySelector('.mobile-nav-toggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        // Reaction mechanism animator
+        class ReactionMechanismAnimator {
+            constructor() {
+                this.currentMechanism = null;
+                this.currentStep = 0;
+                this.mechanismData = {
+                    'sn2': {
+                        name: 'SN2 Nucleophilic Substitution',
+                        steps: [
+                            {
+                                equation: 'HO⁻ + CH₃Br → [HO⋯CH₃⋯Br]⁻ → HOCH₃ + Br⁻',
+                                description: 'Concerted backside attack by hydroxide ion',
+                                electronFlow: 'HO⁻ donates electron pair to carbon while C-Br bond breaks',
+                                intermediate: 'None (concerted mechanism)',
+                                energy: 'Single transition state'
+                            },
+                            {
+                                equation: 'Transition State: [HO⋯CH₃⋯Br]⁻',
+                                description: 'Pentacoordinate transition state',
+                                electronFlow: 'Partial bonds forming and breaking simultaneously',
+                                intermediate: 'High-energy transition state',
+                                energy: 'Energy maximum'
+                            }
+                        ],
+                        energyProfile: [0, 80, 20], // Reactants, TS, Products
+                        info: {
+                            'rateLaw': 'Rate = k[CH₃Br][HO⁻]',
+                            'stereochemistry': 'Inversion of configuration',
+                            'solvent': 'Polar aprotic preferred',
+                            'substrate': 'Primary alkyl halides favored'
+                        }
+                    },
+                    'e2': {
+                        name: 'E2 Elimination',
+                        steps: [
+                            {
+                                equation: 'HO⁻ + CH₃CH₂Br → [HO⋯H⋯CH=CH₂⋯Br]⁻ → CH₂=CH₂ + H₂O + Br⁻',
+                                description: 'Concerted elimination of HBr',
+                                electronFlow: 'Base abstracts proton while double bond forms and leaving group departs',
+                                intermediate: 'None (concerted mechanism)',
+                                energy: 'Single transition state'
+                            },
+                            {
+                                equation: 'Transition State: [HO⋯H⋯CH=CH₂⋯Br]⁻',
+                                description: 'Anti-periplanar transition state',
+                                electronFlow: 'Simultaneous proton transfer, π-bond formation, and leaving group departure',
+                                intermediate: 'High-energy transition state',
+                                energy: 'Energy maximum'
+                            }
+                        ],
+                        energyProfile: [0, 75, 15],
+                        info: {
+                            'rateLaw': 'Rate = k[CH₃CH₂Br][HO⁻]',
+                            'stereochemistry': 'Anti-periplanar elimination',
+                            'regiochemistry': 'Zaitsev\'s rule (more substituted alkene)',
+                            'base': 'Strong base required'
+                        }
+                    },
+                    'acid_base': {
+                        name: 'Acid-Base Reaction',
+                        steps: [
+                            {
+                                equation: 'HCl + NaOH → H⁺ + Cl⁻ + Na⁺ + OH⁻',
+                                description: 'Complete dissociation of strong acid and base',
+                                electronFlow: 'Proton transfer from acid to base',
+                                intermediate: 'Hydronium and hydroxide ions',
+                                energy: 'Exothermic reaction'
+                            },
+                            {
+                                equation: 'H⁺ + OH⁻ → H₂O',
+                                description: 'Formation of water',
+                                electronFlow: 'Electron pair from OH⁻ forms bond with H⁺',
+                                intermediate: 'None',
+                                energy: 'Large energy release'
+                            }
+                        ],
+                        energyProfile: [0, -57], // Highly exothermic
+                        info: {
+                            'enthalpy': 'ΔH = -57.3 kJ/mol',
+                            'equilibrium': 'Completely favors products',
+                            'conductivity': 'Decreases as ions form water',
+                            'indicators': 'Phenolphthalein changes at equivalence point'
+                        }
+                    },
+                    'redox': {
+                        name: 'Redox Reaction',
+                        steps: [
+                            {
+                                equation: 'Zn → Zn²⁺ + 2e⁻',
+                                description: 'Oxidation half-reaction',
+                                electronFlow: 'Zinc loses electrons (oxidation)',
+                                intermediate: 'Zinc ions in solution',
+                                energy: 'Oxidation potential'
+                            },
+                            {
+                                equation: 'Cu²⁺ + 2e⁻ → Cu',
+                                description: 'Reduction half-reaction',
+                                electronFlow: 'Copper ions gain electrons (reduction)',
+                                intermediate: 'Copper metal deposition',
+                                energy: 'Reduction potential'
+                            },
+                            {
+                                equation: 'Zn + Cu²⁺ → Zn²⁺ + Cu',
+                                description: 'Overall redox reaction',
+                                electronFlow: 'Electrons flow from Zn to Cu²⁺',
+                                intermediate: 'None',
+                                energy: 'Spontaneous (E° = +1.10 V)'
+                            }
+                        ],
+                        energyProfile: [0, -212], // Spontaneous reaction
+                        info: {
+                            'cellPotential': 'E° = +1.10 V',
+                            'spontaneity': 'Spontaneous (ΔG < 0)',
+                            'applications': 'Galvanic cells, batteries',
+                            'observations': 'Zinc dissolves, copper deposits, blue color fades'
+                        }
+                    },
+                    'esterification': {
+                        name: 'Esterification',
+                        steps: [
+                            {
+                                equation: 'CH₃COOH + CH₃CH₂OH ⇌ CH₃COOCH₂CH₃ + H₂O',
+                                description: 'Acid-catalyzed ester formation',
+                                electronFlow: 'Protonation of carbonyl oxygen, nucleophilic attack by alcohol',
+                                intermediate: 'Tetrahedral intermediate',
+                                energy: 'Reversible reaction'
+                            },
+                            {
+                                equation: 'Protonated carboxylic acid + ethanol → tetrahedral intermediate',
+                                description: 'Nucleophilic addition step',
+                                electronFlow: 'Ethanol oxygen attacks carbonyl carbon',
+                                intermediate: 'Protonated tetrahedral intermediate',
+                                energy: 'First transition state'
+                            },
+                            {
+                                equation: 'Tetrahedral intermediate → ester + water',
+                                description: 'Elimination of water',
+                                electronFlow: 'Proton transfer and water departure',
+                                intermediate: 'Protonated ester',
+                                energy: 'Second transition state'
+                            }
+                        ],
+                        energyProfile: [0, 60, 40, 20], // Two transition states
+                        info: {
+                            'catalyst': 'Concentrated H₂SO₄',
+                            'equilibrium': 'Favors reactants (Le Chatelier)',
+                            'yieldImprovement': 'Remove water or excess alcohol',
+                            'characteristics': 'Fruity odor of ester'
+                        }
+                    }
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                document.getElementById('mechanismForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const mechanismType = document.getElementById('mechanismType').value;
+                    this.loadMechanism(mechanismType);
+                });
+            }
+            
+            loadMechanism(mechanismType) {
+                if (!this.mechanismData[mechanismType]) {
+                    showToast('Mechanism not found', 'error');
+                    return;
+                }
+                
+                this.currentMechanism = mechanismType;
+                this.currentStep = 0;
+                this.renderMechanism();
+                this.renderEnergyDiagram();
+                this.renderMechanismInfo();
+            }
+            
+            renderMechanism() {
+                const mechanism = this.mechanismData[this.currentMechanism];
+                const step = mechanism.steps[this.currentStep];
+                
+                const content = `
+                    <div class="step-display">
+                        <div>
+                            <h3>Step ${this.currentStep + 1} of ${mechanism.steps.length}</h3>
+                            <div class="step-equation">${step.equation}</div>
+                            <p>${step.description}</p>
+                            
+                            <div class="electron-flow">
+                                <span class="arrow">→</span>
+                                <span style="margin: 0 15px; color: var(--text-secondary);">${step.electronFlow}</span>
+                                <span class="arrow">→</span>
+                            </div>
+                            
+                            <div class="intermediate-display">
+                                <strong>Intermediate:</strong> ${step.intermediate}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-indicator">
+                        ${mechanism.steps.map((_, i) => 
+                            `<div class="step-dot ${i === this.currentStep ? 'active' : ''}" 
+                                 onclick="mechanismAnimator.goToStep(${i})"></div>`
+                        ).join('')}
+                    </div>
+                `;
+                
+                document.getElementById('mechanismContent').innerHTML = content;
+                
+                // Update controls
+                this.renderControls();
+            }
+            
+            renderControls() {
+                const mechanism = this.mechanismData[this.currentMechanism];
+                const controlsHtml = `
+                    <button class="btn-outline" onclick="mechanismAnimator.prevStep()" 
+                            ${this.currentStep === 0 ? 'disabled' : ''}>
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button class="btn-primary" onclick="mechanismAnimator.nextStep()" 
+                            ${this.currentStep === mechanism.steps.length - 1 ? 'disabled' : ''}>
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn-secondary" onclick="mechanismAnimator.restartMechanism()">
+                        <i class="fas fa-redo"></i> Restart
+                    </button>
+                `;
+                
+                const controlsDiv = document.querySelector('.mechanism-controls');
+                if (controlsDiv) {
+                    controlsDiv.innerHTML = controlsHtml;
+                } else {
+                    const newControls = document.createElement('div');
+                    newControls.className = 'mechanism-controls';
+                    newControls.innerHTML = controlsHtml;
+                    document.querySelector('.mechanism-viewer').appendChild(newControls);
+                }
+            }
+            
+            renderEnergyDiagram() {
+                const mechanism = this.mechanismData[this.currentMechanism];
+                const energyData = mechanism.energyProfile;
+                const diagram = document.getElementById('energyDiagram');
+                
+                if (energyData.length === 0) return;
+                
+                // Clear existing content
+                diagram.innerHTML = '<div class="energy-curve" id="energyCurve"></div>';
+                
+                const curve = document.getElementById('energyCurve');
+                const width = curve.offsetWidth;
+                const height = curve.offsetHeight;
+                
+                // Create SVG for energy curve
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '100%');
+                svg.setAttribute('height', '100%');
+                svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                
+                // Create path for energy curve
+                let pathData = `M 0,${height}`;
+                const stepWidth = width / (energyData.length - 1);
+                
+                for (let i = 0; i < energyData.length; i++) {
+                    const x = i * stepWidth;
+                    const y = height - (energyData[i] / 100) * height;
+                    pathData += ` L ${x},${y}`;
+                    
+                    // Add energy point
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', x);
+                    circle.setAttribute('cy', y);
+                    circle.setAttribute('r', 5);
+                    circle.setAttribute('fill', i === this.currentStep ? '#4361ee' : '#6c757d');
+                    svg.appendChild(circle);
+                    
+                    // Add labels
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('x', x);
+                    label.setAttribute('y', y - 10);
+                    label.setAttribute('text-anchor', 'middle');
+                    label.setAttribute('fill', '#495057');
+                    label.setAttribute('font-size', '12');
+                    label.textContent = i === 0 ? 'Reactants' : 
+                                      i === energyData.length - 1 ? 'Products' : 
+                                      `TS${i}`;
+                    svg.appendChild(label);
+                }
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('stroke', '#4361ee');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('fill', 'none');
+                svg.appendChild(path);
+                
+                curve.appendChild(svg);
+            }
+            
+            renderMechanismInfo() {
+                const mechanism = this.mechanismData[this.currentMechanism];
+                const infoDiv = document.getElementById('mechanismInfo');
+                
+                let infoHtml = `<h4>${mechanism.name}</h4>`;
+                
+                for (const [key, value] of Object.entries(mechanism.info)) {
+                    const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    infoHtml += `<p><strong>${formattedKey}:</strong> ${value}</p>`;
+                }
+                
+                infoDiv.innerHTML = infoHtml;
+            }
+            
+            nextStep() {
+                const mechanism = this.mechanismData[this.currentMechanism];
+                if (this.currentStep < mechanism.steps.length - 1) {
+                    this.currentStep++;
+                    this.renderMechanism();
+                    this.renderEnergyDiagram();
+                }
+            }
+            
+            prevStep() {
+                if (this.currentStep > 0) {
+                    this.currentStep--;
+                    this.renderMechanism();
+                    this.renderEnergyDiagram();
+                }
+            }
+            
+            goToStep(stepIndex) {
+                this.currentStep = stepIndex;
+                this.renderMechanism();
+                this.renderEnergyDiagram();
+            }
+            
+            restartMechanism() {
+                this.currentStep = 0;
+                this.renderMechanism();
+                this.renderEnergyDiagram();
+            }
+        }
+
+        // Initialize mechanism animator
+        let mechanismAnimator = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            mechanismAnimator = new ReactionMechanismAnimator();
+        });
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

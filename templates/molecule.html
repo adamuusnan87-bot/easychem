@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast 3D Molecular Viewer - ZamaniChem</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .molecule-container {
+            width: 100%;
+            height: 500px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #moleculeCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .loading-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+        
+        .error-message {
+            color: var(--danger);
+            background: rgba(249, 65, 68, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .info-panel {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        /* Fast loading spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(67, 97, 238, 0.3);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i class="fas fa-atom"></i>
+            <span>ZamaniChem</span>
+        </div>
+        
+        <div class="nav-items">
+            <a href="/" class="nav-item">
+                <i class="fas fa-balance-scale"></i>
+                <span>Balance Equations</span>
+            </a>
+            <a href="/yield" class="nav-item">
+                <i class="fas fa-calculator"></i>
+                <span>Yield Calculator</span>
+            </a>
+            <a href="/molecule" class="nav-item active">
+                <i class="fas fa-cube"></i>
+                <span>3D Molecule</span>
+            </a>
+            <a href="/quiz" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                <span>Chemistry Quiz</span>
+            </a>
+            <a href="/elements" class="nav-item">
+                <i class="fas fa-table"></i>
+                <span>Periodic Table</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="main-header">
+            <h1><i class="fas fa-cube"></i> Fast 3D Molecular Viewer</h1>
+            <p class="subtitle">Lightning-fast molecular visualization with instant loading</p>
+        </header>
+
+        <!-- Molecule Input -->
+        <div class="card">
+            <h3><i class="fas fa-flask"></i> Enter Chemical Formula</h3>
+            <form id="moleculeForm">
+                <div class="form-group">
+                    <label for="formula">
+                        <i class="fas fa-pen"></i>
+                        Chemical Formula
+                    </label>
+                    <input type="text" 
+                           id="formula" 
+                           name="formula" 
+                           placeholder="Example: H2O, CH4, CO2, NH3"
+                           value="{{ formula or 'H2O' }}">
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-cube"></i>
+                    Generate 3D Model
+                </button>
+            </form>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+
+        <!-- 3D Viewer -->
+        <div class="molecule-container">
+            <canvas id="moleculeCanvas"></canvas>
+            <div id="loadingMessage" class="loading-message">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- Information Panel -->
+        <div class="info-panel">
+            <h3><i class="fas fa-info-circle"></i> Supported Molecules</h3>
+            <p><strong>Fast loading molecules:</strong> H2O, CH4, CO2, NH3, H2, N2, O2, C2H6</p>
+            <p><em>3D model loads in under 1 second!</em></p>
+        </div>
+
+        <!-- Controls Instructions -->
+        <div class="card">
+            <h3><i class="fas fa-gamepad"></i> Controls</h3>
+            <ul>
+                <li><strong>Left Click + Drag</strong>: Rotate molecule</li>
+                <li><strong>Right Click + Drag</strong>: Pan view</li>
+                <li><strong>Scroll Wheel</strong>: Zoom in/out</li>
+                <li><strong>Double Click</strong>: Reset view</li>
+            </ul>
+        </div>
+    </main>
+
+    <!-- Fast Three.js Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/libs/tween.umd.js"></script>
+    <script>
+        // Fast Three.js implementation without modules
+        (function() {
+            // Check if WebGL is supported first
+            function isWebGLSupported() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    return !!(window.WebGLRenderingContext && 
+                           (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            if (!isWebGLSupported()) {
+                document.getElementById('loadingMessage').innerHTML = 
+                    '<i class="fas fa-exclamation-triangle fa-2x" style="color: var(--danger);"></i>' +
+                    '<p>WebGL not supported. Try Chrome, Firefox, or Edge.</p>';
+                return;
+            }
+
+            // Simple OrbitControls implementation
+            function createOrbitControls(camera, domElement) {
+                let enabled = true;
+                let target = new THREE.Vector3();
+                let spherical = new THREE.Spherical();
+                let sphericalDelta = new THREE.Spherical();
+                let panOffset = new THREE.Vector3();
+                let scale = 1;
+                let panSpeed = 1.0;
+                let rotateSpeed = 1.0;
+                let zoomSpeed = 1.0;
+                let dampingFactor = 0.05;
+                let enableDamping = true;
+                let autoRotate = false;
+                let autoRotateSpeed = 2.0;
+                let minDistance = 0;
+                let maxDistance = Infinity;
+                let minPolarAngle = 0;
+                let maxPolarAngle = Math.PI;
+                let minAzimuthAngle = -Infinity;
+                let maxAzimuthAngle = Infinity;
+                let enableZoom = true;
+                let enableRotate = true;
+                let enablePan = true;
+                let mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+                let touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+                // State
+                let STATE = { NONE: -1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_PAN: 4, TOUCH_DOLLY_PAN: 5, TOUCH_DOLLY: 6 };
+                let state = STATE.NONE;
+                let EPS = 0.000001;
+                let lastPosition = new THREE.Vector3();
+                let lastQuaternion = new THREE.Quaternion();
+
+                // Methods
+                this.getPolarAngle = function () { return spherical.phi; };
+                this.getAzimuthalAngle = function () { return spherical.theta; };
+                this.saveState = function () {
+                    scope.target0.copy(scope.target);
+                    scope.position0.copy(scope.object.position);
+                    scope.zoom0 = scope.object.zoom;
+                };
+                this.reset = function () {
+                    scope.target.copy(scope.target0);
+                    scope.object.position.copy(scope.position0);
+                    scope.object.zoom = scope.zoom0;
+                    scope.object.updateProjectionMatrix();
+                    scope.dispatchEvent(changeEvent);
+                    scope.update();
+                    state = STATE.NONE;
+                };
+
+                // Public properties
+                this.enabled = enabled;
+                this.target = target;
+                this.minDistance = minDistance;
+                this.maxDistance = maxDistance;
+                this.minZoom = 0;
+                this.maxZoom = Infinity;
+                this.minPolarAngle = minPolarAngle;
+                this.maxPolarAngle = maxPolarAngle;
+                this.minAzimuthAngle = minAzimuthAngle;
+                this.maxAzimuthAngle = maxAzimuthAngle;
+                this.enableDamping = enableDamping;
+                this.dampingFactor = dampingFactor;
+                this.enableZoom = enableZoom;
+                this.zoomSpeed = zoomSpeed;
+                this.enableRotate = enableRotate;
+                this.rotateSpeed = rotateSpeed;
+                this.enablePan = enablePan;
+                this.panSpeed = panSpeed;
+                this.autoRotate = autoRotate;
+                this.autoRotateSpeed = autoRotateSpeed;
+                this.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' };
+                this.mouseButtons = mouseButtons;
+                this.touches = touches;
+
+                // Internal properties
+                let scope = this;
+                let changeEvent = { type: 'change' };
+                let startEvent = { type: 'start' };
+                let endEvent = { type: 'end' };
+
+                // Methods
+                this.dispose = function () {
+                    scope.domElement.removeEventListener('contextmenu', onContextMenu, false);
+                    scope.domElement.removeEventListener('pointerdown', onPointerDown, false);
+                    scope.domElement.removeEventListener('wheel', onMouseWheel, false);
+                    scope.domElement.removeEventListener('pointermove', onPointerMove, false);
+                    scope.domElement.removeEventListener('pointerup', onPointerUp, false);
+                    if (scope._domElementKeyEvents !== null) {
+                        scope._domElementKeyEvents.removeEventListener('keydown', onKeyDown, false);
+                        scope._domElementKeyEvents = null;
+                    }
+                };
+
+                // Private methods
+                let getAutoRotationAngle = function () {
+                    return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed;
+                };
+                let getZoomScale = function () {
+                    return Math.pow(0.95, scope.zoomSpeed);
+                };
+                let rotateLeft = function (angle) {
+                    sphericalDelta.theta -= angle;
+                };
+                let rotateUp = function (angle) {
+                    sphericalDelta.phi -= angle;
+                };
+                let panLeft = function (distance, objectMatrix) {
+                    let v = new THREE.Vector3();
+                    v.setFromMatrixColumn(objectMatrix, 0); // Get X column
+                    v.multiplyScalar(-distance);
+                    panOffset.add(v);
+                };
+                let panUp = function (distance, objectMatrix) {
+                    let v = new THREE.Vector3();
+                    if (scope.screenSpacePanning === true) {
+                        v.setFromMatrixColumn(objectMatrix, 1);
+                    } else {
+                        v.setFromMatrixColumn(objectMatrix, 0);
+                        v.crossVectors(scope.object.up, v);
+                    }
+                    v.multiplyScalar(distance);
+                    panOffset.add(v);
+                };
+                let pan = function (deltaX, deltaY) {
+                    let element = scope.domElement;
+                    if (scope.object.isPerspectiveCamera) {
+                        let position = scope.object.position;
+                        let offset = new THREE.Vector3();
+                        offset.copy(position).sub(scope.target);
+                        let targetDistance = offset.length();
+                        targetDistance *= Math.tan((scope.object.fov / 2) * Math.PI / 180.0);
+                        panLeft(2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix);
+                        panUp(2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix);
+                    } else if (scope.object.isOrthographicCamera) {
+                        panLeft(deltaX * (scope.object.right - scope.object.left) / scope.object.zoom / element.clientWidth, scope.object.matrix);
+                        panUp(deltaY * (scope.object.top - scope.object.bottom) / scope.object.zoom / element.clientHeight, scope.object.matrix);
+                    }
+                };
+                let dollyOut = function (dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale /= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom * dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        scope.dispatchEvent(changeEvent);
+                    }
+                };
+                let dollyIn = function (dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale *= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom / dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        scope.dispatchEvent(changeEvent);
+                    }
+                };
+
+                // Event handlers
+                function handleMouseDownRotate(event) {
+                    rotateStart.set(event.clientX, event.clientY);
+                }
+                function handleMouseDownDolly(event) {
+                    dollyStart.set(event.clientX, event.clientY);
+                }
+                function handleMouseDownPan(event) {
+                    panStart.set(event.clientX, event.clientY);
+                }
+                function handleMouseMoveRotate(event) {
+                    rotateEnd.set(event.clientX, event.clientY);
+                    rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(scope.rotateSpeed);
+                    let element = scope.domElement;
+                    rotateLeft(2 * Math.PI * rotateDelta.x / element.clientHeight);
+                    rotateUp(2 * Math.PI * rotateDelta.y / element.clientHeight);
+                    rotateStart.copy(rotateEnd);
+                    scope.update();
+                }
+                function handleMouseMoveDolly(event) {
+                    dollyEnd.set(event.clientX, event.clientY);
+                    dollyDelta.subVectors(dollyEnd, dollyStart);
+                    if (dollyDelta.y > 0) {
+                        dollyOut(getZoomScale());
+                    } else if (dollyDelta.y < 0) {
+                        dollyIn(getZoomScale());
+                    }
+                    dollyStart.copy(dollyEnd);
+                    scope.update();
+                }
+                function handleMouseMovePan(event) {
+                    panEnd.set(event.clientX, event.clientY);
+                    panDelta.subVectors(panEnd, panStart).multiplyScalar(scope.panSpeed);
+                    pan(panDelta.x, panDelta.y);
+                    panStart.copy(panEnd);
+                    scope.update();
+                }
+                function handleMouseWheel(event) {
+                    if (event.deltaY < 0) {
+                        dollyIn(getZoomScale());
+                    } else if (event.deltaY > 0) {
+                        dollyOut(getZoomScale());
+                    }
+                    scope.update();
+                }
+                function handleKeyDown(event) {
+                    let needsUpdate = false;
+                    switch (event.code) {
+                        case scope.keys.UP:
+                            pan(0, scope.keyPanSpeed);
+                            needsUpdate = true;
+                            break;
+                        case scope.keys.BOTTOM:
+                            pan(0, -scope.keyPanSpeed);
+                            needsUpdate = true;
+                            break;
+                        case scope.keys.LEFT:
+                            pan(scope.keyPanSpeed, 0);
+                            needsUpdate = true;
+                            break;
+                        case scope.keys.RIGHT:
+                            pan(-scope.keyPanSpeed, 0);
+                            needsUpdate = true;
+                            break;
+                    }
+                    if (needsUpdate) {
+                        event.preventDefault();
+                        scope.update();
+                    }
+                }
+                function handleTouchStartRotate(event) {
+                    if (event.touches.length == 1) {
+                        rotateStart.set(event.touches[0].pageX, event.touches[0].pageY);
+                    } else {
+                        let x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
+                        let y = 0.5 * (event.touches[0].pageY + event.touches[1].pageY);
+                        rotateStart.set(x, y);
+                    }
+                }
+                function handleTouchStartPan(event) {
+                    if (event.touches.length == 1) {
+                        panStart.set(event.touches[0].pageX, event.touches[0].pageY);
+                    } else {
+                        let x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
+                        let y = 0.5 * (event.touches[0].pageY + event.touches[1].pageY);
+                        panStart.set(x, y);
+                    }
+                }
+                function handleTouchStartDolly(event) {
+                    let dx = event.touches[0].pageX - event.touches[1].pageX;
+                    let dy = event.touches[0].pageY - event.touches[1].pageY;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    dollyStart.set(0, distance);
+                }
+                function handleTouchStartDollyPan(event) {
+                    if (scope.touches.ONE === THREE.TOUCH.ROTATE) {
+                        handleTouchStartRotate(event);
+                    } else {
+                        handleTouchStartPan(event);
+                    }
+                    if (scope.touches.TWO === THREE.TOUCH.DOLLY_PAN) {
+                        handleTouchStartDolly(event);
+                    }
+                }
+                function handleTouchMoveRotate(event) {
+                    if (event.touches.length == 1) {
+                        rotateEnd.set(event.touches[0].pageX, event.touches[0].pageY);
+                    } else {
+                        let x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
+                        let y = 0.5 * (event.touches[0].pageY + event.touches[1].pageY);
+                        rotateEnd.set(x, y);
+                    }
+                    rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(scope.rotateSpeed);
+                    let element = scope.domElement;
+                    rotateLeft(2 * Math.PI * rotateDelta.x / element.clientHeight);
+                    rotateUp(2 * Math.PI * rotateDelta.y / element.clientHeight);
+                    rotateStart.copy(rotateEnd);
+                }
+                function handleTouchMovePan(event) {
+                    if (event.touches.length == 1) {
+                        panEnd.set(event.touches[0].pageX, event.touches[0].pageY);
+                    } else {
+                        let x = 0.5 * (event.touches[0].pageX + event.touches[1].pageX);
+                        let y = 0.5 * (event.touches[0].pageY + event.touches[1].pageY);
+                        panEnd.set(x, y);
+                    }
+                    panDelta.subVectors(panEnd, panStart).multiplyScalar(scope.panSpeed);
+                    pan(panDelta.x, panDelta.y);
+                    panStart.copy(panEnd);
+                }
+                function handleTouchMoveDolly(event) {
+                    let dx = event.touches[0].pageX - event.touches[1].pageX;
+                    let dy = event.touches[0].pageY - event.touches[1].pageY;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    dollyEnd.set(0, distance);
+                    dollyDelta.set(0, Math.pow(dollyEnd.y / dollyStart.y, scope.zoomSpeed));
+                    dollyIn(dollyDelta.y);
+                    dollyStart.copy(dollyEnd);
+                }
+                function handleTouchMoveDollyPan(event) {
+                    if (scope.touches.ONE === THREE.TOUCH.ROTATE) {
+                        handleTouchMoveRotate(event);
+                    } else {
+                        handleTouchMovePan(event);
+                    }
+                    if (scope.touches.TWO === THREE.TOUCH.DOLLY_PAN) {
+                        handleTouchMoveDolly(event);
+                    }
+                }
+                function handleTouchEnd(/*event*/) {}
+
+                // Setup
+                this.domElement = domElement;
+                this.object = camera;
+                this.target0 = this.target.clone();
+                this.position0 = this.object.position.clone();
+                this.zoom0 = this.object.zoom;
+
+                // Setup listeners
+                function addPointerListeners() {
+                    scope.domElement.addEventListener('contextmenu', onContextMenu, false);
+                    scope.domElement.addEventListener('pointerdown', onPointerDown, false);
+                    scope.domElement.addEventListener('wheel', onMouseWheel, false);
+                    scope.domElement.addEventListener('pointermove', onPointerMove, false);
+                    scope.domElement.addEventListener('pointerup', onPointerUp, false);
+                }
+                addPointerListeners();
+
+                // Animation loop
+                this.update = function () {
+                    let offset = new THREE.Vector3();
+                    offset.copy(this.object.position).sub(this.target);
+                    offset.applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)));
+                    spherical.setFromVector3(offset);
+                    if (this.autoRotate && state === STATE.NONE) {
+                        rotateLeft(getAutoRotationAngle());
+                    }
+                    spherical.theta += sphericalDelta.theta;
+                    spherical.phi += sphericalDelta.phi;
+                    spherical.phi = Math.max(this.minPolarAngle, Math.min(this.maxPolarAngle, spherical.phi));
+                    spherical.makeSafe();
+                    spherical.radius *= scale;
+                    spherical.radius = Math.max(this.minDistance, Math.min(this.maxDistance, spherical.radius));
+                    offset.setFromSpherical(spherical);
+                    this.target.add(panOffset);
+                    this.object.position.copy(this.target).add(offset);
+                    this.object.lookAt(this.target);
+                    if (this.enableDamping === true) {
+                        sphericalDelta.theta *= (1 - this.dampingFactor);
+                        sphericalDelta.phi *= (1 - this.dampingFactor);
+                        panOffset.multiplyScalar(1 - this.dampingFactor);
+                    } else {
+                        sphericalDelta.set(0, 0, 0);
+                        panOffset.set(0, 0, 0);
+                    }
+                    scale = 1;
+                    if (lastPosition.distanceToSquared(this.object.position) > EPS ||
+                        8 * (1 - lastQuaternion.dot(this.object.quaternion)) > EPS) {
+                        scope.dispatchEvent(changeEvent);
+                        lastPosition.copy(this.object.position);
+                        lastQuaternion.copy(this.object.quaternion);
+                    }
+                };
+
+                // Start the viewer immediately
+                initViewer();
+            }
+
+            // Fast Molecular Viewer
+            function initViewer() {
+                const canvas = document.getElementById('moleculeCanvas');
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+                camera.position.z = 15;
+
+                const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+
+                // Simple lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+
+                // Create controls
+                const controls = createOrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+
+                let atoms = [];
+                let bonds = [];
+
+                // Atom colors
+                const atomColors = {
+                    'H': 0xFFFFFF, 'C': 0x909090, 'N': 0x3050F8, 'O': 0xFF0D0D,
+                    'F': 0x90E050, 'Cl': 0x1FF01F, 'Br': 0xA62929, 'I': 0x940094,
+                    'S': 0xB0B0B0, 'P': 0xFF8000, 'default': 0xCCCCCC
+                };
+
+                // Atomic radii
+                const atomicRadii = {
+                    'H': 0.3, 'C': 0.7, 'N': 0.65, 'O': 0.6, 'F': 0.5,
+                    'Cl': 0.99, 'Br': 1.14, 'I': 1.33, 'S': 1.02, 'P': 1.07,
+                    'default': 0.7
+                };
+
+                function clearScene() {
+                    atoms.forEach(atom => scene.remove(atom));
+                    bonds.forEach(bond => scene.remove(bond));
+                    atoms = [];
+                    bonds = [];
+                }
+
+                function createMolecule(formula) {
+                    clearScene();
+
+                    const moleculeDatabase = {
+                        'H2O': { atoms: [{e:'O',x:0,y:0,z:0},{e:'H',x:-0.76,y:0.59,z:0},{e:'H',x:0.76,y:0.59,z:0}], bonds: [[0,1],[0,2]] },
+                        'CH4': { atoms: [{e:'C',x:0,y:0,z:0},{e:'H',x:0,y:1.09,z:0},{e:'H',x:1.09,y:-0.36,z:0},{e:'H',x:-0.54,y:-0.36,z:0.94},{e:'H',x:-0.54,y:-0.36,z:-0.94}], bonds: [[0,1],[0,2],[0,3],[0,4]] },
+                        'CO2': { atoms: [{e:'C',x:0,y:0,z:0},{e:'O',x:-1.16,y:0,z:0},{e:'O',x:1.16,y:0,z:0}], bonds: [[0,1],[0,2]] },
+                        'NH3': { atoms: [{e:'N',x:0,y:0,z:0},{e:'H',x:0,y:1.01,z:0},{e:'H',x:0.88,y:-0.34,z:0},{e:'H',x:-0.88,y:-0.34,z:0}], bonds: [[0,1],[0,2],[0,3]] },
+                        'H2': { atoms: [{e:'H',x:-0.74,y:0,z:0},{e:'H',x:0.74,y:0,z:0}], bonds: [[0,1]] },
+                        'N2': { atoms: [{e:'N',x:-0.55,y:0,z:0},{e:'N',x:0.55,y:0,z:0}], bonds: [[0,1]] },
+                        'O2': { atoms: [{e:'O',x:-0.6,y:0,z:0},{e:'O',x:0.6,y:0,z:0}], bonds: [[0,1]] },
+                        'C2H6': { atoms: [{e:'C',x:-0.77,y:0,z:0},{e:'C',x:0.77,y:0,z:0},{e:'H',x:-1.17,y:0.93,z:0},{e:'H',x:-1.17,y:-0.47,z:0.81},{e:'H',x:-1.17,y:-0.47,z:-0.81},{e:'H',x:1.17,y:0.93,z:0},{e:'H',x:1.17,y:-0.47,z:0.81},{e:'H',x:1.17,y:-0.47,z:-0.81}], bonds: [[0,1],[0,2],[0,3],[0,4],[1,5],[1,6],[1,7]] }
+                    };
+
+                    const normalized = formula.trim().replace(/\s/g, '');
+                    const upperNormalized = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+                    
+                    let data = moleculeDatabase[normalized] || moleculeDatabase[upperNormalized];
+                    
+                    if (!data) {
+                        // Try diatomic
+                        const diatomic = ['H2','N2','O2','F2','Cl2','Br2','I2'];
+                        if (diatomic.includes(normalized)) {
+                            const e = normalized[0];
+                            data = { atoms: [{e:e,x:-0.74,y:0,z:0},{e:e,x:0.74,y:0,z:0}], bonds: [[0,1]] };
+                        }
+                    }
+
+                    if (!data) return false;
+
+                    // Create atoms
+                    data.atoms.forEach(atom => {
+                        const radius = atomicRadii[atom.e] || atomicRadii.default;
+                        const geometry = new THREE.SphereGeometry(radius, 16, 16);
+                        const material = new THREE.MeshPhongMaterial({ 
+                            color: atomColors[atom.e] || atomColors.default,
+                            shininess: 100
+                        });
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(atom.x, atom.y, atom.z);
+                        scene.add(mesh);
+                        atoms.push(mesh);
+                    });
+
+                    // Create bonds
+                    data.bonds.forEach(bond => {
+                        const material = new THREE.LineBasicMaterial({ color: 0x888888, linewidth: 2 });
+                        const points = [
+                            new THREE.Vector3(data.atoms[bond[0]].x, data.atoms[bond[0]].y, data.atoms[bond[0]].z),
+                            new THREE.Vector3(data.atoms[bond[1]].x, data.atoms[bond[1]].y, data.atoms[bond[1]].z)
+                        ];
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const line = new THREE.Line(geometry, material);
+                        scene.add(line);
+                        bonds.push(line);
+                    });
+
+                    return true;
+                }
+
+                // Animation loop
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                });
+
+                // Hide loading message immediately
+                document.getElementById('loadingMessage').style.display = 'none';
+
+                // Make functions available globally
+                window.moleculeViewer = {
+                    createMolecule: createMolecule,
+                    scene: scene,
+                    camera: camera,
+                    renderer: renderer
+                };
+            }
+
+            // Initialize immediately
+            document.addEventListener('DOMContentLoaded', function() {
+                // Form submission
+                document.getElementById('moleculeForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const errorDiv = document.getElementById('errorMessage');
+                    errorDiv.style.display = 'none';
+                    
+                    const formula = document.getElementById('formula').value.trim();
+                    if (!formula) {
+                        errorDiv.textContent = 'Please enter a chemical formula.';
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+                    
+                    if (window.moleculeViewer && !window.moleculeViewer.createMolecule(formula)) {
+                        errorDiv.textContent = 'Molecule "' + formula + '" is not supported. Try H2O, CH4, CO2, NH3, H2, N2, O2, or C2H6.';
+                        errorDiv.style.display = 'block';
+                    }
+                });
+
+                // Load initial molecule
+                const initialFormula = document.getElementById('formula').value;
+                if (window.moleculeViewer) {
+                    window.moleculeViewer.createMolecule(initialFormula);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -814,3 +814,6 @@ function showToast(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+function setExample(equation) {
+    // Convert to standard format with ->
+    const standardized = equation.replace(/→/g, '
